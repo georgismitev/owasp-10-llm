@@ -33,3 +33,9 @@ Read these rules before every change.
 ## Stack
 
 - **Python.** No notebooks.
+
+## Git
+
+- When I say "commit", do commit **and** push in one step — never split into two
+  round-trips or wait for a follow-up "push". Remote is `origin`, branch `main`
+  tracks `origin/main`.
