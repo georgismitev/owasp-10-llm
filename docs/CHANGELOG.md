@@ -24,3 +24,7 @@ see exactly how the lab was built, in order.
   (`.python-version` → 3.12.13), added `openai` 2.44.0 as the one `/v1` client dep,
   locked deps in `uv.lock`. Verified the SDK reaches `qwen2.5:3b` over `/v1`
   (deterministic `pong`). Added `.gitignore` for `.venv/` and caches.
+- Added `labkit/` with a minimal OpenAI-compatible model client (`client.py`):
+  single-turn `/v1` chat, determinism defaults (`temp=0`, `seed=0`). Deferred the
+  other planned harness modules (cache, canary, asr, judges, utility, report) —
+  each a one-liner or a runner with no lab consumer yet; build per-lab when needed.
