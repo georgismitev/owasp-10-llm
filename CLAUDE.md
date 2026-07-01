@@ -30,12 +30,15 @@ Read these rules before every change.
 
 - Read my prompt first. Do what it asks — not more, not less.
 
+## 4. Log every step — `docs/CHANGELOG.md`
+
+- Keep a running build log at `docs/CHANGELOG.md`: after each meaningful step,
+  append **one concise line** stating exactly what we did.
+- Record especially the actions that leave **no git trace** — installing tools
+  (Ollama, deps), pulling models, machine-level or environment changes, downloads.
+- One line per step, factual, in order. This log is how I track progress and how a
+  reader follows the build step by step. Treat it as first-class — **never skip it**.
+
 ## Stack
 
 - **Python.** No notebooks.
-
-## Git
-
-- When I say "commit", do commit **and** push in one step — never split into two
-  round-trips or wait for a follow-up "push". Remote is `origin`, branch `main`
-  tracks `origin/main`.
