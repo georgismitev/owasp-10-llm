@@ -19,3 +19,8 @@ see exactly how the lab was built, in order.
   `mistral:7b`; ~28 GB), verified each serves over `/v1`.
 - Wrote `USED_MODELS.md` pin sheet: backend version, threads, determinism defaults,
   and per-model tag + sha256 digest + quant (note: `glm4:9b` is Q4_0, others Q4_K_M).
+  Later moved it to `docs/USED_MODELS.md`.
+- **B (Python project):** `uv init --bare` (uv 0.11.13), pinned Python 3.12
+  (`.python-version` → 3.12.13), added `openai` 2.44.0 as the one `/v1` client dep,
+  locked deps in `uv.lock`. Verified the SDK reaches `qwen2.5:3b` over `/v1`
+  (deterministic `pong`). Added `.gitignore` for `.venv/` and caches.
