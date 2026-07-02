@@ -28,3 +28,10 @@ see exactly how the lab was built, in order.
   single-turn `/v1` chat, determinism defaults (`temp=0`, `seed=0`). Deferred the
   other planned harness modules (cache, canary, asr, judges, utility, report) —
   each a one-liner or a runner with no lab consumer yet; build per-lab when needed.
+
+## 2026-07-02
+
+- Started **LLM07 (System Prompt Leakage)**: created the `impl-01-tool-credential-leak/`
+  skeleton (`target/ attack/ eval/ defense/ results/`) and wrote the attack-level
+  `README.md` threat model — Scenario #1, leak-only (reuse out of scope), single-turn,
+  canary-present judge.
