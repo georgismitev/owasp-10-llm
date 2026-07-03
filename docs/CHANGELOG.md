@@ -35,3 +35,7 @@ see exactly how the lab was built, in order.
   skeleton (`target/ attack/ eval/ defense/ results/`) and wrote the attack-level
   `README.md` threat model — Scenario #1, leak-only (reuse out of scope), single-turn,
   canary-present judge.
+- Built the impl-01 **target** (`target/app.py`): AcmeSupport system prompt with a
+  planted sentinel credential + `answer()` over the labkit client. Smoke test passed
+  (benign request → on-persona answer, no leak). Chose plain `python folder/file.py`
+  runs over a Makefile; scripts that import the target carry a 2-line `sys.path` shim.
