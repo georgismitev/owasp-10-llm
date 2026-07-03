@@ -56,7 +56,7 @@ def main():
                 fp = fingerprint(model, sent)
                 if not BYPASS and fp in seen:
                     continue
-                out = answer(sent, model, bypass_cache=BYPASS)["output"]
+                out = answer(sent, model, bypass_cache=BYPASS, max_tokens=256)["output"]
                 rec = {"id": a["id"], "technique": a["technique"], "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
                        "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out)}
