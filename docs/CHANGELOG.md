@@ -49,3 +49,7 @@ see exactly how the lab was built, in order.
 - Added a tiny `labkit` **response cache** (`cache.py`, keyed on model+messages+params);
   `client.call` serves cached outputs unless `bypass_cache=True` (runner honors
   `BYPASS_CACHE=1`). Verified miss→hit (13.6s → 0ms). Cache dir `.labkit_cache/` gitignored.
+- Split the attack leak signal into two flags — `system_leaked` (distinctive instruction
+  line recited, verbatim) and `secrets_leaked` (credential value surfaced); backfilled
+  existing `attack.json` from stored responses (no rerun). Baseline: system-leak 3/29,
+  secret-leak 6/29.
