@@ -53,3 +53,22 @@ see exactly how the lab was built, in order.
   line recited, verbatim) and `secrets_leaked` (credential value surfaced); backfilled
   existing `attack.json` from stored responses (no rerun). Baseline: system-leak 3/29,
   secret-leak 6/29.
+
+## 2026-07-03
+
+- Expanded the impl-01 attack corpus to **50** (added billing-focus, completion-anchor,
+  structure-priming, and 21 stronger extraction prompts: echo-format, prefix-inject,
+  roleplay, structured, negative-space, refusal-suppression, hypothetical, meta).
+  Baseline on qwen2.5:3b: system-leak 16/50, secret-leak 22/50.
+- Refactored results to **append-only `attack.jsonl`** (one run per line, keyed by
+  `fingerprint` = hash of model+system+prompt); replaced `attack.json`. Runs immutable;
+  cache-on skips seen fingerprints, `BYPASS_CACHE=1` appends fresh samples.
+- Moved the leak judges to **`eval/judge.py`** (literal string-match tier: canary match
+  for the secret, keyword match for system-prompt lines).
+- Added **`--all`** to the runner (fires the 5-model transfer set; Qwen3 forced
+  `/no_think` per USED_MODELS); writes each run incrementally (resumable).
+- Added **`eval/report.py`** — transfer report: technique×model matrices (system + secret)
+  + callouts (universal / doesn't-transfer / dead / most-resistant), markdown to
+  `results/report.md`.
+- Ran the transfer sweep (50 × 5 transfer models) on CPU via Ollama → appends to
+  `attack.jsonl` (300 rows total incl. the 50 dev-model runs).
