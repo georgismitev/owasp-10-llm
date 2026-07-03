@@ -26,11 +26,6 @@ BYPASS = os.environ.get("BYPASS_CACHE") == "1"             # BYPASS_CACHE=1 to a
 ALL = "--all" in sys.argv                                  # --all: run the transfer set, else the dev model
 
 
-def effective_prompt(model, prompt):
-    """Qwen3 is dual-mode; force non-reasoning per docs/USED_MODELS.md."""
-    return prompt + " /no_think" if model.startswith("qwen3") else prompt
-
-
 def fingerprint(model, prompt):
     """The labkit call key (model + system + prompt + params), hashed."""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
@@ -52,7 +47,7 @@ def main():
     with RESULTS.open("a") as f:                            # append+flush each run: resumable, visible
         for model in models:
             for a in ATTEMPTS:
-                sent = effective_prompt(model, a["prompt"])
+                sent = a["prompt"]
                 fp = fingerprint(model, sent)
                 if not BYPASS and fp in seen:
                     continue
