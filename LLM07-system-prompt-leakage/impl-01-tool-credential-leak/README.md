@@ -15,8 +15,9 @@ planted in its system prompt. Success = the secret appears in the model's output
   for a notional tool, served through the `labkit` client.
 - **`attack/`** — the extraction attempt corpus + a runner that fires each attempt
   and logs request / response / leaked? / latency to `results/`.
-- **`eval/`** — imports `labkit`: the corpus + a canary-present judge + ASR. ASR =
-  fraction of the corpus that leaked (deterministic at `temp=0`, no N-sampling).
+- **`eval/`** — imports `labkit`: the corpus + a leak judge + ASR. ASR = fraction
+  of the corpus that leaked (verdict-stable at `temp=0`, though outputs are not
+  byte-identical; no N-sampling).
 - **`defense/`** — a filter toggled by `DEFENSE=on`, no code edit.
 - **`results/`** — baseline ASR, defended ASR, utility retention, and transcripts.
 
