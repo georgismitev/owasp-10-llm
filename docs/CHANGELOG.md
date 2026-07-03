@@ -39,3 +39,10 @@ see exactly how the lab was built, in order.
   planted sentinel credential + `answer()` over the labkit client. Smoke test passed
   (benign request → on-persona answer, no leak). Chose plain `python folder/file.py`
   runs over a Makefile; scripts that import the target carry a 2-line `sys.path` shim.
+- Wired the impl-01 **attack runner** (`attack/run.py`) + **attempts scaffold**
+  (`attack/attempts.py`): runner fires the corpus at the target, prints each
+  request/answer, records `request/response/leaked/latency` to `results/attack.json`.
+  Attempts (the extraction prompts) are hand-written; runner ran clean on the benign
+  control (`0/1 leaked`). Authoritative judge/ASR deferred to `eval/`.
+- Added the impl-01 **baseline** (`target/baseline.py`): the undefended target
+  answering a benign request as its non-adversarial reference point (`leaked=False`).
