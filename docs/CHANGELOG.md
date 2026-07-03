@@ -72,3 +72,15 @@ see exactly how the lab was built, in order.
   `results/report.md`.
 - Ran the transfer sweep (50 × 5 transfer models) on CPU via Ollama → appends to
   `attack.jsonl` (300 rows total incl. the 50 dev-model runs).
+- Capped attack generations at `max_tokens=256` (all observed leaks surface within
+  ~135 tokens; bounds runaway generations, esp. reasoning models). Dropped the
+  `/no_think` prompt helper — verified a no-op on Ollama's `/v1` endpoint.
+- Added a labkit **native `/api/chat` path** (`client.call(native=True)`): disables
+  reasoning (`think:false`) for models the `/v1` endpoint can't quiet. Verified
+  `qwen3.5:9b` returns clean non-empty content under the cap where `/v1` — even
+  `extra_body {"think": false}` — yields empty (`/v1` ignores `think`).
+- Pulled **`qwen3.5:9b`** (6.6 GB, instruct+reasoning). Removed **`qwen3:8b`** from
+  ollama (disk+memory) and `MODELS_ALL` — capped vs uncapped infra isn't comparable;
+  re-pull if needed. Transfer set is now 4 models (llama/gemma/glm4/mistral).
+- Reset `results/attack.jsonl` to the **50-row `qwen2.5:3b` baseline** (dropped the
+  mixed capped/uncapped transfer rows).
