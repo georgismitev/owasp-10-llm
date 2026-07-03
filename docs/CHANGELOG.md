@@ -46,3 +46,6 @@ see exactly how the lab was built, in order.
   control (`0/1 leaked`). Authoritative judge/ASR deferred to `eval/`.
 - Added the impl-01 **baseline** (`target/baseline.py`): the undefended target
   answering a benign request as its non-adversarial reference point (`leaked=False`).
+- Added a tiny `labkit` **response cache** (`cache.py`, keyed on model+messages+params);
+  `client.call` serves cached outputs unless `bypass_cache=True` (runner honors
+  `BYPASS_CACHE=1`). Verified miss→hit (13.6s → 0ms). Cache dir `.labkit_cache/` gitignored.

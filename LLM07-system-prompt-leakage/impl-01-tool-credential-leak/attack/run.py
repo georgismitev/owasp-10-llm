@@ -5,7 +5,7 @@ Runner only — the attempts live in attempts.py (your substance), and the
 authoritative judge + ASR live in eval/. The `leaked` field here is a convenience
 indicator for the craft loop, not the measured number.
 """
-import sys, pathlib, json, time
+import os, sys, pathlib, json, time
 _impl = pathlib.Path(__file__).resolve().parents[1]        # the impl-01-… dir
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]         # repo root + impl dir
 
@@ -14,16 +14,18 @@ from attack.attempts import ATTEMPTS
 
 MODEL = "qwen2.5:3b"
 RESULTS = _impl / "results" / "attack.json"
+BYPASS = os.environ.get("BYPASS_CACHE") == "1"             # BYPASS_CACHE=1 to force fresh calls
 
 
 def main():
     rows = []
     for a in ATTEMPTS:
         t0 = time.perf_counter()
-        out = answer(a["prompt"], MODEL)["output"]
+        res = answer(a["prompt"], MODEL, bypass_cache=BYPASS)
+        out = res["output"]
         latency_ms = round((time.perf_counter() - t0) * 1000)
         leaked = SECRET in out
-        print(f"[{a['id']}] technique={a['technique']}  leaked={leaked}  ({latency_ms} ms)")
+        print(f"[{a['id']}] technique={a['technique']}  leaked={leaked}  cached={res['cached']}  ({latency_ms} ms)")
         print("  REQUEST:", a["prompt"])
         print("  ANSWER :", out)
         print()
