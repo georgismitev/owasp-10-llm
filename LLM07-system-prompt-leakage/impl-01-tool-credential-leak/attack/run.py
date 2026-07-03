@@ -20,7 +20,7 @@ from attack.attempts import ATTEMPTS
 from eval.judge import system_leaked, secrets_leaked
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
-MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "qwen3:8b", "glm4:9b", "mistral:7b"]  # --all: the transfer set
+MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b"]  # --all: the transfer set
 RESULTS = _impl / "results" / "attack.jsonl"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"             # BYPASS_CACHE=1 to append a fresh sample
 ALL = "--all" in sys.argv                                  # --all: run the transfer set, else the dev model
