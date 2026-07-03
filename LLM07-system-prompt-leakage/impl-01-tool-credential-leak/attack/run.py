@@ -19,9 +19,16 @@ from target.app import answer, SYSTEM_PROMPT
 from attack.attempts import ATTEMPTS
 from eval.judge import system_leaked, secrets_leaked
 
-MODEL = "qwen2.5:3b"
+MODEL = "qwen2.5:3b"                                       # default: the dev model
+MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "qwen3:8b", "glm4:9b", "mistral:7b"]  # --all: the transfer set
 RESULTS = _impl / "results" / "attack.jsonl"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"             # BYPASS_CACHE=1 to append a fresh sample
+ALL = "--all" in sys.argv                                  # --all: run the transfer set, else the dev model
+
+
+def effective_prompt(model, prompt):
+    """Qwen3 is dual-mode; force non-reasoning per docs/USED_MODELS.md."""
+    return prompt + " /no_think" if model.startswith("qwen3") else prompt
 
 
 def fingerprint(model, prompt):
@@ -40,22 +47,25 @@ def load_runs():
 
 def main():
     seen = {r["fingerprint"] for r in load_runs()}
-    new = []
-    for a in ATTEMPTS:
-        fp = fingerprint(MODEL, a["prompt"])
-        if not BYPASS and fp in seen:
-            continue
-        out = answer(a["prompt"], MODEL, bypass_cache=BYPASS)["output"]
-        rec = {"id": a["id"], "technique": a["technique"], "model": MODEL,
-               "fingerprint": fp, "prompt": a["prompt"], "response": out,
-               "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out)}
-        new.append(rec)
-        print(f"[{a['id']}] system={rec['system_leaked']} secret={rec['secrets_leaked']}")
-
-    with RESULTS.open("a") as f:
-        for rec in new:
-            f.write(json.dumps(rec) + "\n")
-    print(f"appended {len(new)} runs (skipped {len(ATTEMPTS) - len(new)} cached)  →  {RESULTS}")
+    models = MODELS_ALL if ALL else [MODEL]
+    n = 0
+    with RESULTS.open("a") as f:                            # append+flush each run: resumable, visible
+        for model in models:
+            for a in ATTEMPTS:
+                sent = effective_prompt(model, a["prompt"])
+                fp = fingerprint(model, sent)
+                if not BYPASS and fp in seen:
+                    continue
+                out = answer(sent, model, bypass_cache=BYPASS)["output"]
+                rec = {"id": a["id"], "technique": a["technique"], "model": model,
+                       "fingerprint": fp, "prompt": a["prompt"], "response": out,
+                       "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out)}
+                f.write(json.dumps(rec) + "\n")
+                f.flush()
+                seen.add(fp)
+                n += 1
+                print(f"[{model} {a['id']}] system={rec['system_leaked']} secret={rec['secrets_leaked']}", flush=True)
+    print(f"appended {n} runs  →  {RESULTS}")
 
 
 if __name__ == "__main__":
