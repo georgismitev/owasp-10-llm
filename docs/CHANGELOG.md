@@ -75,10 +75,11 @@ see exactly how the lab was built, in order.
 - Capped attack generations at `max_tokens=256` (all observed leaks surface within
   ~135 tokens; bounds runaway generations, esp. reasoning models). Dropped the
   `/no_think` prompt helper — verified a no-op on Ollama's `/v1` endpoint.
-- Added a labkit **native `/api/chat` path** (`client.call(native=True)`): disables
-  reasoning (`think:false`) for models the `/v1` endpoint can't quiet. Verified
-  `qwen3.5:9b` returns clean non-empty content under the cap where `/v1` — even
-  `extra_body {"think": false}` — yields empty (`/v1` ignores `think`).
+- Added a labkit **native `/api/chat` path**: disables reasoning (`think:false`) for
+  models the `/v1` endpoint can't quiet, auto-selected by model (`_REASONING` set) so
+  callers stay model-agnostic. Verified `qwen3.5:9b` returns clean non-empty content
+  under the cap where `/v1` — even `extra_body {"think": false}` — yields empty
+  (`/v1` ignores `think`).
 - Pulled **`qwen3.5:9b`** (6.6 GB, instruct+reasoning). Removed **`qwen3:8b`** from
   ollama (disk+memory) and `MODELS_ALL` — capped vs uncapped infra isn't comparable;
   re-pull if needed. Transfer set is now 4 models (llama/gemma/glm4/mistral).

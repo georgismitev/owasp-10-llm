@@ -11,6 +11,8 @@ from . import cache
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 _client = OpenAI(base_url=f"{OLLAMA}/v1", api_key="ollama")
 
+_REASONING = {"qwen3.5:9b"}   # /v1 ignores `think` → these need native /api/chat under a cap
+
 
 def _native_chat(model, messages, temperature, seed, num_predict):
     """Ollama native /api/chat with reasoning disabled (think:false). The /v1 endpoint
@@ -26,14 +28,22 @@ def _native_chat(model, messages, temperature, seed, num_predict):
         return json.load(r)["message"]["content"]
 
 
+def _v1_chat(model, messages, temperature, seed, **params):
+    """OpenAI-compatible /v1 chat completion — the default path for non-reasoning models."""
+    resp = _client.chat.completions.create(
+        model=model, messages=messages, temperature=temperature, seed=seed, **params)
+    return resp.choices[0].message.content
+
+
 def call(model: str, prompt: str, *, system: str | None = None,
          temperature: float = 0, seed: int = 0, bypass_cache: bool = False,
-         native: bool = False, **params) -> dict:
+         **params) -> dict:
     """Single-turn chat call. Returns {model, params, output, cached}.
-    native=False: OpenAI /v1 endpoint. native=True: Ollama /api/chat with reasoning
-    disabled — for reasoning models the /v1 endpoint can't quiet."""
+    Models in _REASONING route to Ollama /api/chat (think:false) — the /v1 endpoint
+    can't quiet them; all others use /v1."""
     messages = ([{"role": "system", "content": system}] if system else []) + \
                [{"role": "user", "content": prompt}]
+    native = model in _REASONING
     key_obj = {"model": model, "messages": messages,
                "temperature": temperature, "seed": seed, "params": params}
     if native:
@@ -42,13 +52,8 @@ def call(model: str, prompt: str, *, system: str | None = None,
     output = None if bypass_cache else cache.get(key)
     cached = output is not None
     if not cached:
-        if native:
-            output = _native_chat(model, messages, temperature, seed, params.get("max_tokens"))
-        else:
-            resp = _client.chat.completions.create(
-                model=model, messages=messages,
-                temperature=temperature, seed=seed, **params)
-            output = resp.choices[0].message.content
+        output = (_native_chat(model, messages, temperature, seed, params.get("max_tokens"))
+                  if native else _v1_chat(model, messages, temperature, seed, **params))
         cache.set(key, output)
     return {
         "model": model,
