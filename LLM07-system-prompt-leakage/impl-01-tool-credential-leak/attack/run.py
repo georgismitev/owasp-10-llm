@@ -20,15 +20,10 @@ from attack.attempts import ATTEMPTS
 from eval.judge import system_leaked, secrets_leaked
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
-MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "qwen3:8b", "glm4:9b", "mistral:7b"]  # --all: the transfer set
+MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]  # --all: the transfer set
 RESULTS = _impl / "results" / "attack.jsonl"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"             # BYPASS_CACHE=1 to append a fresh sample
 ALL = "--all" in sys.argv                                  # --all: run the transfer set, else the dev model
-
-
-def effective_prompt(model, prompt):
-    """Qwen3 is dual-mode; force non-reasoning per docs/USED_MODELS.md."""
-    return prompt + " /no_think" if model.startswith("qwen3") else prompt
 
 
 def fingerprint(model, prompt):
@@ -52,11 +47,11 @@ def main():
     with RESULTS.open("a") as f:                            # append+flush each run: resumable, visible
         for model in models:
             for a in ATTEMPTS:
-                sent = effective_prompt(model, a["prompt"])
+                sent = a["prompt"]
                 fp = fingerprint(model, sent)
                 if not BYPASS and fp in seen:
                     continue
-                out = answer(sent, model, bypass_cache=BYPASS)["output"]
+                out = answer(sent, model, bypass_cache=BYPASS, max_tokens=256)["output"]
                 rec = {"id": a["id"], "technique": a["technique"], "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
                        "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out)}
