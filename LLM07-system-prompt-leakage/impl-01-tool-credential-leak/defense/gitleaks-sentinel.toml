@@ -1,0 +1,9 @@
+# gitleaks config for the "closed" secret-scan variant: default rules + a rule for
+# the planted Acme sentinel, so the bare `sk-ac-live-...` form (no KEY= context) is caught.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "acme-sentinel"
+description = "Acme planted billing credential (sk-ac-live-...)"
+regex = '''sk-ac-live-[0-9a-f]{16}'''
