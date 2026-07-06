@@ -13,7 +13,6 @@ sys.path[:0] = [str(_impl.parents[1]), str(_impl)]         # repo root + impl di
 
 from attack.run import fingerprint, MODEL, MODELS_ALL, RESULTS
 from attack.attempts import ATTEMPTS
-from eval.judge import leak_depth
 
 MODELS = [MODEL] + MODELS_ALL                              # dev model first, then the transfer set
 REPORT = _impl / "results" / "report.md"
@@ -104,6 +103,10 @@ def callouts(idx):
     resist.sort(key=lambda x: x[1])
     lines = ["### callouts", ""]
     lines.append(f"- **universal** (system-leak on all 5 transfer models): {', '.join(universal) or 'none'}")
+    tech_map = techniques()
+    for t in universal:                                        # one example prompt per universal technique
+        ex = " ".join(tech_map[t][0]["prompt"].split())
+        lines.append(f'  - `{t}` — e.g. "{ex if len(ex) <= 140 else ex[:139] + "…"}"')
     lines.append(f"- **doesn't transfer** (leaks dev only, none of the 5): {', '.join(dev_only) or 'none'}")
     lines.append(f"- **dead** (leak nowhere): {', '.join(dead) or 'none'}")
     lines.append(f"- **most-resistant model** (fewest system-leaks): {resist[0][0]} ({resist[0][1]})")
@@ -112,7 +115,7 @@ def callouts(idx):
 
 def depth_summary(runs):
     """Per-model leak-depth breakdown: system-prompt recital (none / partial / full)
-    plus the secret. Reads the stored `depth`, recomputing from the response if absent."""
+    plus the secret. Reads each run's stored `depth` verdict."""
     dep = {m: collections.Counter() for m in MODELS}
     sec = collections.Counter()
     n = collections.Counter()
@@ -121,7 +124,7 @@ def depth_summary(runs):
         if m not in dep:
             continue
         n[m] += 1
-        dep[m][r.get("depth") or leak_depth(r["response"])] += 1
+        dep[m][r["depth"]] += 1
         sec[m] += bool(r.get("secrets_leaked"))
     lines = ["### leak depth by model", "",
              "system-prompt recital by verbatim marker count "
