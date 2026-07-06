@@ -115,3 +115,13 @@ see exactly how the lab was built, in order.
   prompt recited). Re-scored `attack.jsonl` (no model calls) and added a **leak-depth-by-
   model** table to the report; fixed `report.py`'s stale `effective_prompt` import.
   Result: system leak 106/300 (35%, of which 42 full dumps), secret 156/300 (52%).
+- Refactored the impl into clear roles: a top-level conductor `run.py` (fires the attack
+  + judges → `results/attack.jsonl`), `eval/` = judge only, `defense/` = detectors,
+  `report/` = renderers that read the evidence. **Attack evidence is immutable — reports
+  never write `attack.jsonl`.** Removed `attack/run.py` and `eval/report.py`;
+  `results/report.md` → `attack_report.md`. The attack report is regenerated identically.
+- Built the **secret-only defense**: `defense/secret_scan.py` wraps `gitleaks` (offline)
+  with a `sk-ac-live-` custom-rule variant. `report/defense_report.py` scores it over the
+  stored responses in one pass → `results/defense_report.md` (reading `attack.jsonl`,
+  never writing it). Verdicts aren't persisted — they're a deterministic function of the
+  evidence plus the detector, recomputed on demand.
