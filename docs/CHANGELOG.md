@@ -124,4 +124,6 @@ see exactly how the lab was built, in order.
   with a `sk-ac-live-` custom-rule variant. `report/defense_report.py` scores it over the
   stored responses in one pass → `results/defense_report.md` (reading `attack.jsonl`,
   never writing it). Verdicts aren't persisted — they're a deterministic function of the
-  evidence plus the detector, recomputed on demand.
+  evidence plus the detector, recomputed on demand. Result: catches 137/156 out-of-box
+  (secret-leak ASR 52% → 6%), 156/156 with the custom rule (→ 0%), 1 false alarm; the
+  out-of-box misses are 16 bare-in-prose + 3 formatted-assignment (parens / markdown).
