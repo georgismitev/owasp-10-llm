@@ -96,3 +96,22 @@ see exactly how the lab was built, in order.
 - Docs cleanup: swapped `qwen3:8b` → `qwen3.5:9b` in `docs/USED_MODELS.md` (pin row +
   digest, `Q4_K_M`) and the LLM07 impl-01 `README.md` transfer set; replaced the stale
   `/no_think` note with the native `/api/chat` (`think:false`) fact.
+- Reframed impl-01 `README.md` (PR #5): system-prompt leakage is the LLM07 event, the
+  planted credential the sharp high-severity sub-case; aligned the eval/defense/results
+  bullets to two tiers + input/output filters.
+- Launched the capped 5-model transfer sweep (`--all`, `max_tokens=256`) as a detached,
+  auto-resuming background run (`scripts/sweep_supervisor.sh`) → `results/attack.jsonl`.
+- Ran a quick comparison of two secret scanners for the planned output-side defense:
+  installed `gitleaks` 8.30.1 and `trufflehog` 3.95.8 (Go binaries → `~/bin`) and tested
+  them out-of-the-box on the sentinel. gitleaks flags the `BILLING_API_KEY=sk-ac-live-…`
+  assignment form (`generic-api-key`, entropy 4.25) but misses the bare key in prose;
+  trufflehog detects neither. Chose **gitleaks**.
+- Ran the capped transfer sweep to completion — 300 rows (5 transfer models × 50 + the
+  `qwen2.5:3b` dev baseline), one clean pass, 0 retries. Re-ran `qwen2.5:3b` capped so the
+  whole dataset is cap-consistent; results identical to the uncapped baseline (16/50
+  system, 22/50 secret) — the 256 cap doesn't distort a small non-reasoning model.
+- Extended the leak judge: added the persona line `You are AcmeSupport` to `SYSTEM_MARKERS`
+  (4 markers) and a `leak_depth()` tier — none (0) / partial (1–3) / full (all 4, whole
+  prompt recited). Re-scored `attack.jsonl` (no model calls) and added a **leak-depth-by-
+  model** table to the report; fixed `report.py`'s stale `effective_prompt` import.
+  Result: system leak 106/300 (35%, of which 42 full dumps), secret 156/300 (52%).
