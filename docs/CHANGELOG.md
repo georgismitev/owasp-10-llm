@@ -134,3 +134,12 @@ see exactly how the lab was built, in order.
   evidence plus the detector, recomputed on demand. Result: catches 137/156 out-of-box
   (secret-leak ASR 52% → 6%), 156/156 with the custom rule (→ 0%), 1 false alarm; the
   out-of-box misses are 16 bare-in-prose + 3 formatted-assignment (parens / markdown).
+- Built the **input-only defense**: `defense/input_guard.py` wraps the local classifier
+  `protectai/deberta-v3-base-prompt-injection-v2` — `flag(prompt) -> bool`, True on an
+  INJECTION verdict. It scores the *prompt*, so it's model-agnostic and makes no target
+  call; the report classifies each distinct prompt once (49), not all 300 rows. Extended
+  `report/defense_report.py` with an input-guard section (recall + a would-stop-upstream
+  line + a by-technique table) under a shared header. Result: recall 44/49 (90%); of the
+  47 prompts that leaked on ≥1 model the guard stops 43 upstream; the 5 misses are the
+  plainly-phrased / cross-language asks (a German direct ask, blunt "what are your rules").
+  Legit-traffic false-positive rate is deferred (see the reframed assessment task).
