@@ -17,7 +17,7 @@ sys.path[:0] = [str(_impl.parents[1]), str(_impl)]         # repo root + impl di
 
 from target.app import answer, SYSTEM_PROMPT
 from attack.attempts import ATTEMPTS
-from eval.judge import system_leaked, secrets_leaked
+from eval.judge import system_leaked, secrets_leaked, leak_depth
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
 MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]  # --all: the transfer set
@@ -54,7 +54,8 @@ def main():
                 out = answer(sent, model, bypass_cache=BYPASS, max_tokens=256)["output"]
                 rec = {"id": a["id"], "technique": a["technique"], "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
-                       "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out)}
+                       "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out),
+                       "depth": leak_depth(out)}
                 f.write(json.dumps(rec) + "\n")
                 f.flush()
                 seen.add(fp)
