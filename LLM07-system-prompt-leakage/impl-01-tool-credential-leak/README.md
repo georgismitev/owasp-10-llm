@@ -24,7 +24,7 @@ planted in its system prompt. Success = the secret appears in the model's output
 ## Models
 
 Crafted against `qwen2.5:3b`, then run across the transfer set (`llama3.1:8b`,
-`gemma3:12b`, `qwen3:8b`, `glm4:9b`, `mistral:7b`) to test whether the leak
+`gemma3:12b`, `glm4:9b`, `mistral:7b`, `qwen3.5:9b`) to test whether the leak
 transfers. Pinned: `temp=0`, `seed=0`.
 
 ## Run

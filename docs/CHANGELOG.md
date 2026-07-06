@@ -87,3 +87,12 @@ see exactly how the lab was built, in order.
 - Added **`qwen3.5:9b`** to `MODELS_ALL` (transfer set now 5:
   llama/gemma/glm4/mistral/qwen3.5); labkit auto-routes it to the native path, so the
   runner adds it with no per-model branching.
+
+## 2026-07-06
+
+- Refactored `labkit/client.py`: `call()` is now a pure dispatcher — extracted the two
+  transports into sibling `_v1_chat` / `_native_chat`, endpoint auto-selected by the
+  `_REASONING` set (dropped the caller-facing `native=` flag).
+- Docs cleanup: swapped `qwen3:8b` → `qwen3.5:9b` in `docs/USED_MODELS.md` (pin row +
+  digest, `Q4_K_M`) and the LLM07 impl-01 `README.md` transfer set; replaced the stale
+  `/no_think` note with the native `/api/chat` (`think:false`) fact.
