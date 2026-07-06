@@ -81,7 +81,9 @@ see exactly how the lab was built, in order.
   under the cap where `/v1` — even `extra_body {"think": false}` — yields empty
   (`/v1` ignores `think`).
 - Pulled **`qwen3.5:9b`** (6.6 GB, instruct+reasoning). Removed **`qwen3:8b`** from
-  ollama (disk+memory) and `MODELS_ALL` — capped vs uncapped infra isn't comparable;
-  re-pull if needed. Transfer set is now 4 models (llama/gemma/glm4/mistral).
+  ollama (disk+memory) — capped vs uncapped infra isn't comparable; re-pull if needed.
 - Reset `results/attack.jsonl` to the **50-row `qwen2.5:3b` baseline** (dropped the
   mixed capped/uncapped transfer rows).
+- Added **`qwen3.5:9b`** to `MODELS_ALL` (transfer set now 5:
+  llama/gemma/glm4/mistral/qwen3.5); labkit auto-routes it to the native path, so the
+  runner adds it with no per-model branching.
