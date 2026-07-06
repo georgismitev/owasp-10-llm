@@ -4,4 +4,17 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "openai>=2.44.0",
+    "protobuf>=7.35.1",
+    "sentencepiece>=0.2.1",
+    "torch>=2.12.1",
+    "transformers>=5.13.0",
 ]
+
+# CPU-only box (Ollama runs on CPU) — pull the CPU torch wheel, not the ~2.7 GB CUDA stack.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
