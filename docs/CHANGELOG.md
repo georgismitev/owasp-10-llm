@@ -162,3 +162,16 @@ see exactly how the lab was built, in order.
   leaks is ~100% *by construction* (it reuses the judge's markers) and it is blind to obfuscation
   (e.g. the key printed with a dash between each character) — which the embedding detector (the
   next unit) and the planned Unicode-smuggling attack target.
+
+## 2026-07-07
+
+- Built the **legitimate-traffic corpus** for the false-positive assessment (PR #12):
+  49 benign twins, one per attack, each sharing its attack's technique surface but a genuine
+  customer request — the benign distribution the output detector and input guards get measured
+  against. `run.py --legitimate` fires it at the target → `results/legitimate.jsonl` (dev model
+  `qwen2.5:3b`, judge-verified non-leaking).
+- **Finding — legitimate traffic leaks the credential, no attack needed:** 11 of the original twins
+  (genuine billing/refund questions) made `qwen2.5:3b` volunteer the live credential `sk-ac-live-…`
+  (11/49 ≈ 22%; value verbatim, prose paraphrased; model-specific). Preserved in `data/leaky.py` +
+  `results/leaky.jsonl`; those 11 were swapped onto non-credential topics to keep the 49-prompt
+  baseline clean.
