@@ -18,7 +18,7 @@ _impl = pathlib.Path(__file__).resolve().parents[1]       # impl-01-… dir
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
 
 from defense.secret_scan import scan
-from defense.input_guard import flag
+from defense.protectai_guard import flag
 from target.app import SECRET
 
 ATTACK = _impl / "results" / "attack.jsonl"               # read only

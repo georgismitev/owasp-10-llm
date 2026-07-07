@@ -160,5 +160,18 @@ see exactly how the lab was built, in order.
 - Reframed that comparison as a first-class input defense: renamed `report/pi_trial.py` /
   `results/pi_trial.md` → `report/input_guard_comparison.py` / `results/input_guard_comparison.md`,
   and packaged the protectai-v2 ∪ wolf-defender OR as `defense/two_model_guard.py` — a two-model
-  input-guard variant to compare against the single-model `input_guard.py` (with false positives)
-  when picking the final defense.
+  input-guard variant to compare against the single-model guard (with false positives) when
+  picking the final defense.
+- Split the input-defense work into two steps: step 1 = the comparison
+  (`report/input_guard_comparison.py`, the 3-way candidate trial, ending at the finding that
+  protectai-v2 and wolf-defender miss disjoint prompts); step 2 = the defense
+  (`report/two_model_defense.py` → `results/two_model_defense.md`, measuring the actual
+  `defense/two_model_guard.flag` — recall 48/49, blind spot `structured-01`, benign FP 0/1 —
+  with the combining-in-production notes).
+- Restructured so `defense/` owns every model and the reports only orchestrate: renamed
+  `input_guard.py` → `protectai_guard.py`, split the other candidates into their own defense
+  modules (`wolf_guard.py`, `piguard.py`), made `two_model_guard.py` pure composition (imports
+  the protectai + wolf guards and ORs them, no model-loading), and had
+  `report/input_guard_comparison.py` import the three `flag()`s from `defense/` instead of loading
+  models inline. Also made the model references explicit (named constants, not list positions).
+  Behaviour-preserving — both report outputs are byte-identical.

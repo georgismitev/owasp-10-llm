@@ -1,53 +1,42 @@
-"""Compare candidate input guards over the attack corpus, to pick the input defense.
+"""Step 1 — compare candidate input guards over the attack corpus (the trial).
 
-Runs each prompt-injection classifier over the distinct attack prompts + the benign
-control (read from results/attack.jsonl — READ ONLY) and emits
-results/input_guard_comparison.md. Two input-defense variants come out of it: the
-single-model input guard (protectai-v2, the incumbent) and a two-model guard
-(protectai-v2 OR wolf-defender, packaged as defense/two_model_guard.py). PIGuard is
-considered and rejected. The final pick — including false positives — is the separate
-legit-traffic assessment. Detection only, model-agnostic (scores the prompt), no
-target-model calls.
+Consumes the guard defenses from defense/ (protectai_guard, wolf_guard, piguard) — this
+report only orchestrates them, it holds no model logic of its own. Runs each over the
+distinct attack prompts + the benign control (read from results/attack.jsonl — READ ONLY)
+and emits results/input_guard_comparison.md: per-guard recall, which candidate recovers the
+incumbent's misses, and where the two front-runners (protectai-v2, wolf-defender) each miss.
+The point is to *understand the differences* between the candidates. The finding —
+protectai-v2 and wolf-defender miss largely disjoint prompts — motivates step 2, the
+two-model defense (built and measured in report/two_model_defense.py). Detection only,
+model-agnostic (scores the prompt), no target-model calls.
 
 Benign-control FP here is directional only (n=1).
 """
-import sys, pathlib, json, functools, collections
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import sys, pathlib, json, collections
 
 _impl = pathlib.Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]
 
+from defense.protectai_guard import flag as protectai_flag
+from defense.wolf_guard import flag as wolf_flag
+from defense.piguard import flag as piguard_flag
+
 ATTACK = _impl / "results" / "attack.jsonl"               # read only
 REPORT = _impl / "results" / "input_guard_comparison.md"
 
-# Each detector: display label, license, HF model id, injection class index, trust_remote_code.
-# Injection index is pinned from each model's config, or (wolf-defender ships opaque
-# LABEL_0/LABEL_1) an empirical probe — all three put INJECTION at class 1.
-DETECTORS = [
-    {"name": "protectai-v2 (incumbent)", "license": "Apache-2.0",
-     "id": "protectai/deberta-v3-base-prompt-injection-v2", "inj": 1, "trust": False},
-    {"name": "wolf-defender-small", "license": "Apache-2.0",
-     "id": "patronus-studio/wolf-defender-prompt-injection-small", "inj": 1, "trust": False},
-    {"name": "PIGuard", "license": "MIT",
-     "id": "leolee99/PIGuard", "inj": 1, "trust": True},
-]
+# Candidate input-guard defenses being compared, each referred to by an explicit name rather
+# than a list position. The flag() for each lives in defense/ (imported above) — this report
+# only orchestrates them; label + license are display metadata.
+PROTECTAI = "protectai-v2"      # incumbent single-model input guard
+WOLF = "wolf-defender"          # ensemble partner — recovers the incumbent's misses
+PIGUARD = "PIGuard"             # also-ran — low-FP-tuned, under-flags in-distribution
 
-
-@functools.lru_cache(maxsize=None)
-def _model(model_id, trust):
-    tok = AutoTokenizer.from_pretrained(model_id)
-    mod = AutoModelForSequenceClassification.from_pretrained(model_id, trust_remote_code=trust).eval()
-    return tok, mod
-
-
-def verdict(det, prompt):
-    """True if the detector labels the prompt INJECTION (argmax == its injection class)."""
-    tok, mod = _model(det["id"], det["trust"])
-    inputs = tok(prompt, return_tensors="pt", truncation=True, max_length=512)
-    with torch.no_grad():
-        logits = mod(**inputs).logits
-    return int(logits.argmax()) == det["inj"]
+GUARDS = {
+    PROTECTAI: {"label": "protectai-v2 (incumbent)", "license": "Apache-2.0", "flag": protectai_flag},
+    WOLF: {"label": "wolf-defender-small", "license": "Apache-2.0", "flag": wolf_flag},
+    PIGUARD: {"label": "PIGuard", "license": "MIT", "flag": piguard_flag},
+}
+ORDER = [PROTECTAI, WOLF, PIGUARD]                         # display order in the report tables
 
 
 def distinct_prompts(rows):
@@ -71,92 +60,66 @@ def main():
     attacks = [i for i, e in prompts.items() if e["technique"] != "benign-control"]
     benign = [i for i, e in prompts.items() if e["technique"] == "benign-control"]
 
-    fired = {d["name"]: {i: verdict(d, prompts[i]["prompt"]) for i in prompts} for d in DETECTORS}
-    incumbent = DETECTORS[0]["name"]
-    misses = [i for i in attacks if not fired[incumbent][i]]     # incumbent says SAFE on an attack
+    fired = {name: {i: GUARDS[name]["flag"](prompts[i]["prompt"]) for i in prompts} for name in ORDER}
+    incumbent_misses = [i for i in attacks if not fired[PROTECTAI][i]]   # attacks protectai-v2 calls SAFE
 
     out = ["# LLM07 impl-01 — input-guard options compared", "",
            f"Three local prompt-injection classifiers as candidate input guards over the "
-           f"{len(attacks)} distinct attack prompts + "
-           f"{len(benign)} benign control, read from the attack evidence. Recall = attack "
-           "prompts flagged INJECTION. Benign FP is directional only "
-           f"(n={len(benign)}) — the real false-positive rate is the legit-traffic assessment.", "",
+           f"{len(attacks)} distinct attack prompts + {len(benign)} benign control, read from the "
+           "attack evidence. Recall = attack prompts flagged INJECTION. Benign FP is directional "
+           f"only (n={len(benign)}) — the real false-positive rate is the legit-traffic assessment.", "",
            "| detector | license | recall | benign FP |", "|---|---|---|---|"]
-    for d in DETECTORS:
-        rec = sum(fired[d["name"]][i] for i in attacks)
-        fp = sum(fired[d["name"]][i] for i in benign)
-        out.append(f"| {d['name']} | {d['license']} | {rec}/{len(attacks)} "
-                   f"({100*rec/len(attacks):.0f}%) | {fp}/{len(benign)} |")
+    for name in ORDER:
+        guard = GUARDS[name]
+        recall = sum(fired[name][i] for i in attacks)
+        false_pos = sum(fired[name][i] for i in benign)
+        out.append(f"| {guard['label']} | {guard['license']} | {recall}/{len(attacks)} "
+                   f"({100*recall/len(attacks):.0f}%) | {false_pos}/{len(benign)} |")
 
-    challengers = [d["name"] for d in DETECTORS[1:]]
+    challengers = [WOLF, PIGUARD]
     out += ["", "## Recovering the incumbent's misses", "",
-            f"protectai-v2 misses {len(misses)} of {len(attacks)} attacks. A ✓ means the "
+            f"protectai-v2 misses {len(incumbent_misses)} of {len(attacks)} attacks. A ✓ means the "
             "challenger flags that prompt INJECTION where the incumbent did not.", "",
-            "| id | technique | prompt | " + " | ".join(challengers) + " |",
+            "| id | technique | prompt | " + " | ".join(GUARDS[c]["label"] for c in challengers) + " |",
             "|---|---|---|" + "---|" * len(challengers)]
-    for i in misses:
+    for i in incumbent_misses:
         e = prompts[i]
         marks = " | ".join("✓" if fired[c][i] else "✗" for c in challengers)
         out.append(f"| {i} | {e['technique']} | {snippet(e['prompt'])} | {marks} |")
+    out.append("")
     for c in challengers:
-        rec = sum(fired[c][i] for i in misses)
-        out.append("" if c == challengers[0] else None)
-        out.append(f"- **{c}** recovers {rec}/{len(misses)} of the incumbent's misses.")
-    out = [x for x in out if x is not None]
+        recovered = sum(fired[c][i] for i in incumbent_misses)
+        out.append(f"- **{GUARDS[c]['label']}** recovers {recovered}/{len(incumbent_misses)} "
+                   "of the incumbent's misses.")
 
     # Symmetric view of the two ensemble members: every attack at least one of them misses,
     # marked per model. The row both mark ✗ is the ensemble's blind spot.
-    members = [incumbent, "wolf-defender-small"]
-    miss_union = [i for i in attacks if any(not fired[m][i] for m in members)]
+    members = [PROTECTAI, WOLF]
+    missed_by_either = [i for i in attacks if any(not fired[m][i] for m in members)]
     out += ["", "## Where each ensemble member misses", "",
             "Every attack that protectai-v2 or wolf-defender misses, marked per model "
             "(✗ = said SAFE on an attack). They miss largely disjoint sets; the only row both "
             "mark ✗ is the ensemble's blind spot.", "",
-            "| id | technique | prompt | " + " | ".join(members) + " |",
+            "| id | technique | prompt | " + " | ".join(GUARDS[m]["label"] for m in members) + " |",
             "|---|---|---|" + "---|" * len(members)]
-    for i in miss_union:
+    for i in missed_by_either:
         e = prompts[i]
         marks = " | ".join("✗" if not fired[m][i] else "✓" for m in members)
         out.append(f"| {i} | {e['technique']} | {snippet(e['prompt'])} | {marks} |")
 
-    # The two-model input defense: wolf-defender ties recall but catches a different set, so
-    # rather than swap it in, keep both and OR them — a second input defense. Report its coverage.
-    pair = f"{incumbent} ∪ wolf-defender-small"
-    union = sum(fired[incumbent][i] or fired["wolf-defender-small"][i] for i in attacks)
-    both_miss = [i for i in attacks if not fired[incumbent][i] and not fired["wolf-defender-small"][i]]
-    out += ["", "## The two-model input defense", "",
-            "wolf-defender ties recall but catches a *different* set — so instead of swapping it "
-            "in, we keep both and OR them. That's a second input defense alongside the single-model "
-            "guard, packaged as `defense/two_model_guard.py`.", "",
-            f"- **{pair}** flags {union}/{len(attacks)} attacks ({100*union/len(attacks):.0f}%); "
-            f"the only attack neither catches is {', '.join(both_miss) or 'none'}."]
-
-    out += ["", "## Combining in production — how the two votes fuse", "",
-            f"The {union}/{len(attacks)} above is a **hard-label OR**: each model argmaxes at its "
-            "own 0.5 boundary into a yes/no vote, and the ensemble fires if *either* votes "
-            "INJECTION (`flag = protectai.INJECTION or wolf.INJECTION`). No score sharing, no "
-            "threshold, no confidence blending — the crudest fusion. It's the right choice for "
-            "*measuring* \"do they catch different things\", but before this ships, weigh three ways "
-            "the two could combine:", "",
-            "- **Hard-label OR (measured here).** Max recall, zero tuning. But it also **unions the "
-            "false positives** — whenever *either* model over-blocks a benign prompt, so does the "
-            f"ensemble. We never saw that cost: this comparison has {len(benign)} benign control and "
-            "both passed it. So the OR *looks* free and isn't proven to be.",
-            "- **Score-level fusion (the tunable version).** Combine the two INJECTION softmax "
-            "probabilities into one score and threshold once: `max(p_protectai, p_wolf)` behaves "
-            "like OR but with a *movable* cutoff instead of two fixed 0.5 boundaries; `mean`/weighted "
-            "needs agreement, trading recall for fewer false positives. This is the dial that trades "
-            "recall vs FP — but picking the threshold needs a calibration/legit-traffic set.",
-            "- **Cascade (staged).** Run one model first, run the second only on what the first "
-            "passes. For a pure OR the verdict is *identical* — a cascade only saves compute by "
-            "short-circuiting. It changes the decision only if the second model is a *confirmer* "
-            "(AND, to cut FPs) rather than a booster.", "",
-            "**Bottom line:** hard-OR is the right measurement baseline (it isolates whether the two "
-            "are complementary — they are), but not necessarily the right deployment. Its FP cost is "
-            "unmeasured here. Ship score fusion with a threshold calibrated on legit traffic where "
-            "over-blocking real users is costly; hard-OR is fine where a missed extraction hurts far "
-            "more than an occasional false alarm. Either way the FP side is the open question — that "
-            "is the legit-traffic assessment, not this comparison."]
+    # Finding: the two front-runners tie on recall but miss largely disjoint sets, so combining
+    # them should cover nearly everything. That motivates step 2 — the two-model defense, which
+    # is built and measured separately (report/two_model_defense.py), not here.
+    p_recall = sum(fired[PROTECTAI][i] for i in attacks)
+    w_recall = sum(fired[WOLF][i] for i in attacks)
+    missed_by_both = [i for i in attacks if not fired[PROTECTAI][i] and not fired[WOLF][i]]
+    out += ["", "## Finding", "",
+            f"protectai-v2 and wolf-defender tie on recall ({p_recall}/{len(attacks)} and "
+            f"{w_recall}/{len(attacks)}) but miss *different* prompts — only "
+            f"{', '.join(missed_by_both) or 'none'} escapes both. They're complementary, not "
+            "redundant, so combining them should cover nearly everything. That's the next step: "
+            "the two-model input defense `defense/two_model_guard.py`, built and measured in "
+            "`two_model_defense.md`."]
 
     text = "\n".join(out) + "\n"
     REPORT.write_text(text)
