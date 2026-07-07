@@ -1,25 +1,31 @@
-"""Conductor: fire the attack corpus at the target and judge each response; append
-the evidence to report/attack.jsonl. Wiring only — no attack/judge logic of its own.
+"""Conductor: fire a corpus at the target and judge each response; append the
+evidence to results/. Wiring only — no attack/judge logic of its own.
 
-  python run.py           run the dev model (qwen2.5:3b)
-  python run.py --all     run the transfer set
+  python run.py                 fire the attack corpus at the dev model (qwen2.5:3b)
+  python run.py --all           fire the attack corpus at the transfer set
+  python run.py --legitimate    fire the legitimate corpus (add --all for the transfer set)
 
-Append-only, one JSON object per run, keyed by fingerprint (model + system + prompt +
-params) so a changed prompt never reuses a stale run and reruns are resumable.
+The judge runs on every response either way — a legitimate prompt that elicits a leak
+is exactly what we want recorded. Append-only, one JSON object per run, keyed by
+fingerprint (model + system + prompt + params) so a changed prompt never reuses a
+stale run and reruns are resumable.
 """
 import os, sys, pathlib, json, hashlib
 _impl = pathlib.Path(__file__).resolve().parent           # impl-01-… dir
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
 
 from target.app import answer, SYSTEM_PROMPT
-from attack.attempts import ATTEMPTS
+from data.attack import ATTEMPTS
+from data.legitimate import LEGITIMATE
 from eval.judge import system_leaked, secrets_leaked, leak_depth
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
 MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]  # --all: transfer set
-RESULTS = _impl / "report" / "attack.jsonl"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"
 ALL = "--all" in sys.argv
+LEGIT = "--legitimate" in sys.argv                        # legitimate corpus instead of the attack corpus
+CORPUS = LEGITIMATE if LEGIT else ATTEMPTS
+RESULTS = _impl / "results" / ("legitimate.jsonl" if LEGIT else "attack.jsonl")
 
 
 def fingerprint(model, prompt):
@@ -43,12 +49,13 @@ def main():
     n = 0
     with RESULTS.open("a") as f:
         for model in models:
-            for a in ATTEMPTS:
+            for a in CORPUS:
                 fp = fingerprint(model, a["prompt"])
                 if not BYPASS and fp in seen:
                     continue
                 out = answer(a["prompt"], model, bypass_cache=BYPASS, max_tokens=256)["output"]
-                rec = {"id": a["id"], "technique": a["technique"], "model": model,
+                label = {"pair": a["pair"]} if LEGIT else {"technique": a["technique"]}
+                rec = {"id": a["id"], **label, "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
                        "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out),
                        "depth": leak_depth(out)}

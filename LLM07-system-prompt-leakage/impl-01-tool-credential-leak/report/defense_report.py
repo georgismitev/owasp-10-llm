@@ -1,6 +1,6 @@
 """Measure the defenses against the attack, and report them in one pass.
 
-Reads report/attack.jsonl (attack evidence — READ ONLY), runs each defense over the
+Reads results/attack.jsonl (attack evidence — READ ONLY), runs each defense over the
 evidence, and emits report/defense_report.md — the defense counterpart to attack_report.md.
 Verdicts are computed in memory, not persisted — they're a deterministic function of the
 evidence plus the defense, so the report is the only artifact worth keeping.
@@ -11,7 +11,7 @@ Defenses measured here (one section each):
 - Output-only, verbatim tripwire (defense/output_tripwire.py) — substring match on the response.
 - Secret-only (defense/secret_scan.py) — gitleaks over the responses.
 Both input guards score the prompt, so each distinct prompt is classified once, not per
-model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legit-traffic
+model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legitimate-traffic
 false-positive rates are a separate assessment (deferred task). How we picked the input-guard
 models is a separate analysis (report/input_guard_comparison.md).
 """
@@ -25,7 +25,7 @@ from defense.two_model_guard import flag as two_model_flag
 from defense.output_tripwire import flag as output_tripwire_flag
 from target.app import SECRET
 
-ATTACK = _impl / "report" / "attack.jsonl"               # read only
+ATTACK = _impl / "results" / "attack.jsonl"              # read only
 REPORT = _impl / "report" / "defense_report.md"
 
 
@@ -69,7 +69,7 @@ FUSION_NOTES = [
     "sharing, no threshold — the crudest fusion. Before shipping, weigh three ways to combine:", "",
     "- **Hard-label OR (today).** Max recall, zero tuning — but it also **unions the false "
     "positives**: whenever either model over-blocks a benign prompt, so does the guard. Unmeasured "
-    "here (1 benign control) — the legit-traffic assessment is what would expose it.",
+    "here (1 benign control) — the legitimate-traffic assessment is what would expose it.",
     "- **Score-level fusion.** Combine the two INJECTION probabilities and threshold once "
     "(`max` ≈ OR but with a movable cutoff; `mean`/weighted trades recall for fewer false "
     "positives) — the dial for recall vs FP, needing a calibration set.",

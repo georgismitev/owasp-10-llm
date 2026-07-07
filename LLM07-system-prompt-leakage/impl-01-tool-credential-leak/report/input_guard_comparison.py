@@ -2,7 +2,7 @@
 
 Consumes the guard defenses from defense/ (protectai_guard, wolf_guard, piguard) — this
 report only orchestrates them, it holds no model logic of its own. Runs each over the
-distinct attack prompts + the benign control (read from report/attack.jsonl — READ ONLY)
+distinct attack prompts + the benign control (read from results/attack.jsonl — READ ONLY)
 and emits report/input_guard_comparison.md: per-guard recall, which candidate recovers the
 incumbent's misses, and where the two front-runners (protectai-v2, wolf-defender) each miss.
 The point is to *understand the differences* between the candidates. The finding —
@@ -21,7 +21,7 @@ from defense.protectai_guard import flag as protectai_flag
 from defense.wolf_guard import flag as wolf_flag
 from defense.piguard import flag as piguard_flag
 
-ATTACK = _impl / "report" / "attack.jsonl"               # read only
+ATTACK = _impl / "results" / "attack.jsonl"              # read only
 REPORT = _impl / "report" / "input_guard_comparison.md"
 
 # Candidate input-guard defenses being compared, each referred to by an explicit name rather
@@ -67,7 +67,7 @@ def main():
            f"Three local prompt-injection classifiers as candidate input guards over the "
            f"{len(attacks)} distinct attack prompts + {len(benign)} benign control, read from the "
            "attack evidence. Recall = attack prompts flagged INJECTION. Benign FP is directional "
-           f"only (n={len(benign)}) — the real false-positive rate is the legit-traffic assessment.", "",
+           f"only (n={len(benign)}) — the real false-positive rate is the legitimate-traffic assessment.", "",
            "| detector | license | recall | benign FP |", "|---|---|---|---|"]
     for name in ORDER:
         guard = GUARDS[name]

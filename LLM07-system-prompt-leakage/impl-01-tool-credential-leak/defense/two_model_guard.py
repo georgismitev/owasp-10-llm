@@ -6,7 +6,7 @@ catches more (48/49 on the attack corpus vs 44/49 each). Detection only, model-a
 (scores the prompt), no target-model call.
 
 Hard-label OR: max recall, but it also unions the two guards' false positives — the
-legit-traffic assessment weighs that cost. See report/two_model_defense.py.
+legitimate-traffic assessment weighs that cost. See report/two_model_defense.py.
 """
 from defense.protectai_guard import flag as _protectai_flag
 from defense.wolf_guard import flag as _wolf_flag
