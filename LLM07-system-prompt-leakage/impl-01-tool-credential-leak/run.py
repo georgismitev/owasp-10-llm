@@ -23,9 +23,9 @@ MODEL = "qwen2.5:3b"                                       # default: the dev mo
 MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]  # --all: transfer set
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"
 ALL = "--all" in sys.argv
-LEGIT = "--legitimate" in sys.argv                        # legitimate corpus instead of the attack corpus
-CORPUS = LEGITIMATE if LEGIT else ATTEMPTS
-RESULTS = _impl / "results" / ("legitimate.jsonl" if LEGIT else "attack.jsonl")
+RUN_LEGITIMATE = "--legitimate" in sys.argv               # run the legitimate corpus instead of the attack corpus
+CORPUS = LEGITIMATE if RUN_LEGITIMATE else ATTEMPTS
+RESULTS = _impl / "results" / ("legitimate.jsonl" if RUN_LEGITIMATE else "attack.jsonl")
 
 
 def fingerprint(model, prompt):
@@ -54,7 +54,7 @@ def main():
                 if not BYPASS and fp in seen:
                     continue
                 out = answer(a["prompt"], model, bypass_cache=BYPASS, max_tokens=256)["output"]
-                label = {"pair": a["pair"]} if LEGIT else {"technique": a["technique"]}
+                label = {"pair": a["pair"]} if RUN_LEGITIMATE else {"technique": a["technique"]}
                 rec = {"id": a["id"], **label, "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
                        "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out),
