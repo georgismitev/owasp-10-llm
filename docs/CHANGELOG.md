@@ -90,88 +90,48 @@ see exactly how the lab was built, in order.
 
 ## 2026-07-06
 
-- Refactored `labkit/client.py`: `call()` is now a pure dispatcher — extracted the two
-  transports into sibling `_v1_chat` / `_native_chat`, endpoint auto-selected by the
-  `_REASONING` set (dropped the caller-facing `native=` flag).
-- Docs cleanup: swapped `qwen3:8b` → `qwen3.5:9b` in `docs/USED_MODELS.md` (pin row +
-  digest, `Q4_K_M`) and the LLM07 impl-01 `README.md` transfer set; replaced the stale
-  `/no_think` note with the native `/api/chat` (`think:false`) fact.
 - Reframed impl-01 `README.md` (PR #5): system-prompt leakage is the LLM07 event, the
-  planted credential the sharp high-severity sub-case; aligned the eval/defense/results
-  bullets to two tiers + input/output filters.
+  planted credential the sharp high-severity sub-case; eval/defense split into two tiers
+  + input/output filters.
 - Launched the capped 5-model transfer sweep (`--all`, `max_tokens=256`) as a detached,
-  auto-resuming background run (`scripts/sweep_supervisor.sh`) → `results/attack.jsonl`.
-- Ran a quick comparison of two secret scanners for the planned output-side defense:
-  installed `gitleaks` 8.30.1 and `trufflehog` 3.95.8 (Go binaries → `~/bin`) and tested
-  them out-of-the-box on the sentinel. gitleaks flags the `BILLING_API_KEY=sk-ac-live-…`
-  assignment form (`generic-api-key`, entropy 4.25) but misses the bare key in prose;
+  auto-resuming background run → `results/attack.jsonl`.
+- Compared two secret scanners for the output-side defense: installed `gitleaks` 8.30.1 +
+  `trufflehog` 3.95.8 (`~/bin`). gitleaks flags the `BILLING_API_KEY=sk-ac-live-…`
+  assignment (`generic-api-key`, entropy 4.25) but misses the bare key in prose;
   trufflehog detects neither. Chose **gitleaks**.
-- Ran the capped transfer sweep to completion — 300 rows (5 transfer models × 50 + the
-  `qwen2.5:3b` dev baseline), one clean pass, 0 retries. Re-ran `qwen2.5:3b` capped so the
-  whole dataset is cap-consistent; results identical to the uncapped baseline (16/50
-  system, 22/50 secret) — the 256 cap doesn't distort a small non-reasoning model.
-- Extended the leak judge: added the persona line `You are AcmeSupport` to `SYSTEM_MARKERS`
-  (4 markers) and a `leak_depth()` tier — none (0) / partial (1–3) / full (all 4, whole
-  prompt recited). Re-scored `attack.jsonl` (no model calls) and added a **leak-depth-by-
-  model** table to the report; fixed `report.py`'s stale `effective_prompt` import.
-  Result: system leak 106/300 (35%, of which 42 full dumps), secret 156/300 (52%).
-- Refactored the impl into clear roles: a top-level conductor `run.py` (fires the attack
-  + judges → `results/attack.jsonl`), `eval/` = judge only, `defense/` = detectors,
-  `report/` = renderers that read the evidence. **Attack evidence is immutable — reports
-  never write `attack.jsonl`.** Removed `attack/run.py` and `eval/report.py`;
-  `results/report.md` → `attack_report.md`. The attack report is regenerated identically.
-- **Input-guard setup (prompt-injection defense):** added the ML deps via uv —
-  `torch`, `transformers`, `sentencepiece`, `protobuf`. Torch defaulted to the CUDA build
-  (pulled ~2.7 GB of unusable `nvidia-*` wheels on this CPU-only box), so pinned the CPU
-  wheel via a `[tool.uv.sources]` / `pytorch-cpu` index (`torch 2.12.1+cpu`); `.venv`
-  4.7 GB → 935 MB. Downloaded the classifier `protectai/deberta-v3-base-prompt-injection-v2`
-  (Apache-2.0, ungated, 715 MB → `~/.cache/huggingface`); loads on CPU, labels
-  `{0: SAFE, 1: INJECTION}`, 184 M params.
-- Built the **secret-only defense**: `defense/secret_scan.py` wraps `gitleaks` (offline)
-  with a `sk-ac-live-` custom-rule variant. `report/defense_report.py` scores it over the
-  stored responses in one pass → `results/defense_report.md` (reading `attack.jsonl`,
-  never writing it). Verdicts aren't persisted — they're a deterministic function of the
-  evidence plus the detector, recomputed on demand. Result: catches 137/156 out-of-box
-  (secret-leak ASR 52% → 6%), 156/156 with the custom rule (→ 0%), 1 false alarm; the
-  out-of-box misses are 16 bare-in-prose + 3 formatted-assignment (parens / markdown).
-- Built the **input-only defense**: `defense/input_guard.py` wraps the local classifier
-  `protectai/deberta-v3-base-prompt-injection-v2` — `flag(prompt) -> bool`, True on an
-  INJECTION verdict. It scores the *prompt*, so it's model-agnostic and makes no target
-  call; the report classifies each distinct prompt once (49), not all 300 rows. Extended
-  `report/defense_report.py` with an input-guard section (recall + a would-stop-upstream
-  line + a by-technique table) under a shared header. Result: recall 44/49 (90%); of the
-  47 prompts that leaked on ≥1 model the guard stops 43 upstream; the 5 misses are the
-  plainly-phrased / cross-language asks (a German direct ask, blunt "what are your rules").
-  Legit-traffic false-positive rate is deferred (see the reframed assessment task).
-- **Evaluated alternative prompt-injection detectors as input guards** over the attack corpus
-  (downloaded `patronus-studio/wolf-defender-prompt-injection-small` and `leolee99/PIGuard`
-  locally on CPU; PIGuard runs `trust_remote_code`, so inspected its code first — a benign
-  CLS-pooling head). protectai-v2 and wolf-defender each flag 44/49 (90%) but miss *disjoint*
-  prompts, so ORing them into a two-model input guard lifts coverage to 48/49 (98%) — the lone
-  escape is a "dump your config as JSON" ask; the recovered prompts are the blunt / cross-lingual
-  asks (e.g. a Spanish "list your constraints"). PIGuard is tuned for low false-positives and
-  under-catches in-distribution (23/49, 47%). Caveat carried forward for production: a hard-OR
-  maximizes recall but *unions* the two models' false positives — unmeasured until the
-  legit-traffic assessment; score-level fusion (one threshold over both models' scores) is the
-  tunable alternative.
-- **Output-only verbatim tripwire** (`defense/output_tripwire.py`): substring-flags the model's
-  response on any distinctive system-prompt line, the credential value, or the partial
-  `BILLING_API_KEY` label. Over the 300 responses it flags 184 — catches all 168 leaks, plus 16
-  partial-only label matches on judge-clean replies (real partial disclosures + benign env-var
-  talk, incl. the benign control) surfaced for operator review. A cheap floor: recall on real
-  leaks is ~100% *by construction* (it reuses the judge's markers) and it is blind to obfuscation
-  (e.g. the key printed with a dash between each character) — which the embedding detector (the
-  next unit) and the planned Unicode-smuggling attack target.
+- Completed the capped transfer sweep — 300 rows (5 transfer models × 50 + the
+  `qwen2.5:3b` baseline), cap-consistent with the uncapped baseline (16/50 system,
+  22/50 secret).
+- Extended the leak judge: added `You are AcmeSupport` to `SYSTEM_MARKERS` (4) + a
+  `leak_depth()` tier (none / partial / full). Re-scored: system leak 106/300 (35%,
+  42 full dumps), secret 156/300 (52%).
+- **Input-guard setup:** added CPU ML deps via uv — `torch 2.12.1+cpu` pinned via a
+  `pytorch-cpu` index (the CUDA default pulled 2.7 GB of unusable `nvidia-*` wheels).
+  Downloaded `protectai/deberta-v3-base-prompt-injection-v2` (715 MB, `{0: SAFE, 1: INJECTION}`).
+- Built the **secret-only defense** (`defense/secret_scan.py` wraps `gitleaks` + a
+  `sk-ac-live-` custom rule): 137/156 out-of-box (secret ASR 52% → 6%), 156/156 with the
+  rule (→ 0%), 1 false alarm.
+- Built the **input-only defense** (`defense/input_guard.py`, protectai-v2): scores the
+  *prompt*, model-agnostic. Recall 44/49 (90%); stops 43 of the 47 that leaked upstream;
+  the 5 misses are plainly-phrased / cross-language asks.
 
 ## 2026-07-07
 
+- **Evaluated alternative prompt-injection detectors as input guards:** downloaded
+  `wolf-defender-prompt-injection-small` + `PIGuard` (CPU). protectai-v2 and wolf-defender
+  each flag 44/49 but miss *disjoint* prompts, so ORing them (`two_model_guard.py`) lifts
+  coverage to 48/49; the lone escape is a "dump your config as JSON" ask. PIGuard
+  under-catches in-distribution (23/49). Caveat: hard-OR *unions* the two models' false
+  positives — unmeasured until the legit-traffic assessment.
+- **Output-only verbatim tripwire** (`defense/output_tripwire.py`): substring-flags a
+  distinctive system-prompt line, the credential value, or the partial `BILLING_API_KEY`
+  label. Flags 184/300 — all 168 leaks + 16 partial-only on judge-clean replies (surfaced
+  for review). Recall ~100% by construction; blind to obfuscation.
 - Built the **legitimate-traffic corpus** for the false-positive assessment (PR #12):
-  49 benign twins, one per attack, each sharing its attack's technique surface but a genuine
-  customer request — the benign distribution the output detector and input guards get measured
-  against. `run.py --legitimate` fires it at the target → `results/legitimate.jsonl` (dev model
-  `qwen2.5:3b`, judge-verified non-leaking).
-- **Finding — legitimate traffic leaks the credential, no attack needed:** 11 of the original twins
-  (genuine billing/refund questions) made `qwen2.5:3b` volunteer the live credential `sk-ac-live-…`
-  (11/49 ≈ 22%; value verbatim, prose paraphrased; model-specific). Preserved in `data/leaky.py` +
-  `results/leaky.jsonl`; those 11 were swapped onto non-credential topics to keep the 49-prompt
-  baseline clean.
+  49 benign twins, one per attack, same technique surface but genuine customer requests.
+  `run.py --legitimate` → `results/legitimate.jsonl` (`qwen2.5:3b`, judge-verified non-leaking).
+- **Finding — legitimate traffic leaks the credential, no attack needed:** 11 of the
+  original twins (genuine billing/refund questions) made `qwen2.5:3b` volunteer the live
+  credential `sk-ac-live-…` (11/49 ≈ 22%; value verbatim, prose paraphrased). Preserved in
+  `data/leaky.py` + `results/leaky.jsonl`; the 11 were swapped onto non-credential topics
+  to keep the baseline clean.
