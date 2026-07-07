@@ -9,6 +9,10 @@ Read these rules before every change.
   exploits, payloads, defenses/mitigations, evals, or measurement logic.
 - Write that code **only when I explicitly ask for it.** "Explicitly" = I name the
   thing to build or ask a direct question that requires it. Silence is not a request.
+- **Building a detector/defense does not include evaluating it.** The eval — harness,
+  running the experiment, reporting conclusions — is separate lab substance and a separate
+  explicit ask. If a stated precondition ("if we have everything") isn't met, stop and
+  surface it — don't work around it.
 - **No unsolicited solutions or ideas-as-code.** Don't propose exercises, don't
   sketch an attack "to be helpful," don't add the defense because the attack is done.
 - If a task tempts you toward writing lab substance I didn't ask for, **stop and leave
