@@ -1,5 +1,5 @@
 """Conductor: fire the attack corpus at the target and judge each response; append
-the evidence to results/attack.jsonl. Wiring only — no attack/judge logic of its own.
+the evidence to report/attack.jsonl. Wiring only — no attack/judge logic of its own.
 
   python run.py           run the dev model (qwen2.5:3b)
   python run.py --all     run the transfer set
@@ -17,7 +17,7 @@ from eval.judge import system_leaked, secrets_leaked, leak_depth
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
 MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]  # --all: transfer set
-RESULTS = _impl / "results" / "attack.jsonl"
+RESULTS = _impl / "report" / "attack.jsonl"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"
 ALL = "--all" in sys.argv
 
