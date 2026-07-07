@@ -143,3 +143,14 @@ see exactly how the lab was built, in order.
   47 prompts that leaked on ≥1 model the guard stops 43 upstream; the 5 misses are the
   plainly-phrased / cross-language asks (a German direct ask, blunt "what are your rules").
   Legit-traffic false-positive rate is deferred (see the reframed assessment task).
+- **Evaluated alternative prompt-injection detectors as input guards** over the attack corpus
+  (downloaded `patronus-studio/wolf-defender-prompt-injection-small` and `leolee99/PIGuard`
+  locally on CPU; PIGuard runs `trust_remote_code`, so inspected its code first — a benign
+  CLS-pooling head). protectai-v2 and wolf-defender each flag 44/49 (90%) but miss *disjoint*
+  prompts, so ORing them into a two-model input guard lifts coverage to 48/49 (98%) — the lone
+  escape is a "dump your config as JSON" ask; the recovered prompts are the blunt / cross-lingual
+  asks (e.g. a Spanish "list your constraints"). PIGuard is tuned for low false-positives and
+  under-catches in-distribution (23/49, 47%). Caveat carried forward for production: a hard-OR
+  maximizes recall but *unions* the two models' false positives — unmeasured until the
+  legit-traffic assessment; score-level fusion (one threshold over both models' scores) is the
+  tunable alternative.

@@ -18,14 +18,15 @@ objectively-detectable case.
 - **`target/`** — the vulnerable app: a system prompt carrying the planted secret
   for a notional tool, served through the `labkit` client.
 - **`attack/`** — the extraction attempt corpus + a runner that fires each attempt
-  and logs request / response / leaked? / latency to `results/`.
+  and logs request / response / leaked? / latency to `report/`.
 - **`eval/`** — imports `labkit`: the corpus + a two-tier leak judge (system-prompt
   text; the credential sub-case) + ASR per tier (verdict-stable at `temp=0`, though
   outputs are not byte-identical; no N-sampling).
 - **`defense/`** — input- and output-side filters targeting system-prompt leakage
   (both tiers), toggled by `DEFENSE=on`, no code edit.
-- **`results/`** — baseline vs defended ASR (both tiers), utility retention, and
-  transcripts.
+- **`report/`** — the attack evidence (`attack.jsonl`, immutable), the report generators,
+  and the reports they render (`attack_report.md`, `defense_report.md`,
+  `input_guard_comparison.md`).
 
 ## Models
 
@@ -41,8 +42,8 @@ The planned Makefile contract (targets not yet wired):
 |---|---|
 | `make up` | bring up the target |
 | `make attack` | run the attack against the undefended target |
-| `make eval` | baseline ASR over the corpus → `results/` |
+| `make eval` | baseline ASR over the corpus → `report/` |
 | `make defend` | enable the defense (`DEFENSE=on`) |
-| `make eval-defended` | defended ASR + utility retention → `results/` |
-| `make report` | baseline vs defended vs utility → `results/` |
+| `make eval-defended` | defended ASR + utility retention → `report/` |
+| `make report` | baseline vs defended vs utility → `report/` |
 | `make down` | tear down |

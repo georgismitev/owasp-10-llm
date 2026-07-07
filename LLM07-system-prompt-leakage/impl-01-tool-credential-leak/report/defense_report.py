@@ -1,58 +1,80 @@
-"""Measure the defenses and report them, in one pass.
+"""Measure the defenses against the attack, and report them in one pass.
 
-Reads results/attack.jsonl (attack evidence — READ ONLY), runs each detector over the
-evidence, and emits the report to results/defense_report.md. Verdicts are computed in
-memory, not persisted — they're a deterministic function of the evidence plus the
-detector, so the report is the only artifact worth keeping.
+Reads report/attack.jsonl (attack evidence — READ ONLY), runs each defense over the
+evidence, and emits report/defense_report.md — the defense counterpart to attack_report.md.
+Verdicts are computed in memory, not persisted — they're a deterministic function of the
+evidence plus the defense, so the report is the only artifact worth keeping.
 
-Two defenses so far:
-- Input-only (prompt-injection classifier): recall over the attack prompts. Model-agnostic
-  (it scores the prompt), so each distinct prompt is classified once, not per model.
-- Secret-only (gitleaks output scan): caught / missed / false-alarm over the responses,
-  out-of-box vs custom rule, misses broken down by leak form (KEY=value vs bare-in-prose).
-Ground truth = system_leaked / secrets_leaked from the attack evidence. Legit-traffic
-false-positive rates are a separate assessment (see the deferred task).
+Defenses measured here (one section each):
+- Input-only, single-model (defense/protectai_guard.py).
+- Input-only, two-model (defense/two_model_guard.py) — protectai OR wolf-defender.
+- Secret-only (defense/secret_scan.py) — gitleaks over the responses.
+Both input guards score the prompt, so each distinct prompt is classified once, not per
+model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legit-traffic
+false-positive rates are a separate assessment (deferred task). How we picked the input-guard
+models is a separate analysis (report/input_guard_comparison.md).
 """
 import sys, pathlib, json, collections
 _impl = pathlib.Path(__file__).resolve().parents[1]       # impl-01-… dir
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
 
 from defense.secret_scan import scan
-from defense.input_guard import flag
+from defense.protectai_guard import flag as protectai_flag
+from defense.two_model_guard import flag as two_model_flag
 from target.app import SECRET
 
-ATTACK = _impl / "results" / "attack.jsonl"               # read only
-REPORT = _impl / "results" / "defense_report.md"
+ATTACK = _impl / "report" / "attack.jsonl"               # read only
+REPORT = _impl / "report" / "defense_report.md"
 
 
-def input_guard_table(rows):
-    """Input-guard recall over the attack corpus. The guard scores the prompt, so it's
-    model-agnostic — classify each distinct prompt once; benign-control isn't an attack."""
+def guard_section(rows, flag_fn, title, blurb):
+    """One input-guard section: recall / would-stop-upstream / misses / benign-FP + a
+    by-technique table. The guard scores the prompt, so classify each distinct prompt once."""
     prompts = collections.OrderedDict()                    # id -> {technique, prompt, leaked}
     for r in rows:
         e = prompts.setdefault(r["id"], {"technique": r["technique"], "prompt": r["prompt"], "leaked": False})
         e["leaked"] = e["leaked"] or bool(r["system_leaked"] or r["secrets_leaked"])
     attacks = {i: e for i, e in prompts.items() if e["technique"] != "benign-control"}
-    flagged = {i: flag(e["prompt"]) for i, e in attacks.items()}
+    benign = {i: e for i, e in prompts.items() if e["technique"] == "benign-control"}
+    flagged = {i: flag_fn(e["prompt"]) for i, e in prompts.items()}
 
     by_tech = collections.OrderedDict()
     for i, e in attacks.items():
         c = by_tech.setdefault(e["technique"], [0, 0])
         c[0] += flagged[i]
         c[1] += 1
-    caught, total = sum(flagged.values()), len(attacks)
+    caught, total = sum(flagged[i] for i in attacks), len(attacks)
     leaked = [i for i, e in attacks.items() if e["leaked"]]
     leaked_caught = sum(flagged[i] for i in leaked)
+    misses = [i for i in attacks if not flagged[i]]
+    fp = sum(flagged[i] for i in benign)
 
-    out = ["## Input-only defense (prompt-injection classifier)", "",
-           "protectai/deberta-v3-base-prompt-injection-v2 over each distinct attack prompt — "
-           "it scores the prompt, so the verdict is model-agnostic (classified once, not per model).", "",
+    out = [f"## {title}", "", blurb, "",
            f"recall: {caught}/{total} attack prompts flagged INJECTION ({100*caught/total:.0f}%)",
-           f"of the {len(leaked)} prompts that leaked on ≥1 model, the guard would stop {leaked_caught} upstream", "",
+           f"of the {len(leaked)} prompts that leaked on ≥1 model, the guard would stop {leaked_caught} upstream",
+           f"misses (flagged SAFE): {', '.join(misses) or 'none'}",
+           f"benign FP: {fp}/{len(benign)} (directional only, n={len(benign)})", "",
            "| technique | flagged / n |", "|---|---|"]
     for t, (c, n) in sorted(by_tech.items(), key=lambda kv: (kv[1][0] / kv[1][1], kv[0])):
         out.append(f"| {t} | {c}/{n} |")
-    return "\n".join(out) + "\n"
+    return out
+
+
+FUSION_NOTES = [
+    "", "### Combining in production — how the two votes fuse", "",
+    "The two-model recall above is a **hard-label OR**: each model argmaxes at its own 0.5 "
+    "boundary into a yes/no vote, and the guard fires if *either* votes INJECTION. No score "
+    "sharing, no threshold — the crudest fusion. Before shipping, weigh three ways to combine:", "",
+    "- **Hard-label OR (today).** Max recall, zero tuning — but it also **unions the false "
+    "positives**: whenever either model over-blocks a benign prompt, so does the guard. Unmeasured "
+    "here (1 benign control) — the legit-traffic assessment is what would expose it.",
+    "- **Score-level fusion.** Combine the two INJECTION probabilities and threshold once "
+    "(`max` ≈ OR but with a movable cutoff; `mean`/weighted trades recall for fewer false "
+    "positives) — the dial for recall vs FP, needing a calibration set.",
+    "- **Cascade.** Run one model, then the other only on what the first passes — same verdict as "
+    "OR, just cheaper (short-circuits, which `flag()` already does); it changes the outcome only if "
+    "the second model is a confirmer (AND) rather than a booster.",
+]
 
 
 def leak_form(text):
@@ -102,10 +124,21 @@ def secret_table(rows, verdicts):
 def main():
     rows = [json.loads(l) for l in ATTACK.read_text().splitlines() if l.strip()]
     verdicts = score(rows)                                 # in memory only — not persisted
+
     header = ["# LLM07 impl-01 — defense report", "",
-              f"detectors measured over the {len(rows)}-row attack evidence (read only): the input "
-              "guard classifies prompts, the secret scan runs gitleaks on responses.", ""]
-    text = "\n".join(header) + "\n" + input_guard_table(rows) + "\n" + secret_table(rows, verdicts)
+              f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
+              "input-guard variants that classify the prompt before the target, and the secret "
+              "scan (gitleaks) over the responses.", ""]
+    single = guard_section(rows, protectai_flag, "Input-only defense (single-model — protectai-v2)",
+                           "`defense/protectai_guard.py` — protectai/deberta-v3-base-prompt-injection-v2. "
+                           "It scores the prompt, so the verdict is model-agnostic (classified once, not per model).")
+    two_model = guard_section(rows, two_model_flag,
+                              "Input-only defense (two-model — protectai-v2 ∪ wolf-defender)",
+                              "`defense/two_model_guard.py` = protectai-v2 **OR** wolf-defender (hard-label OR) — "
+                              "catches what protectai alone misses.") + FUSION_NOTES
+
+    text = "\n".join(header) + "\n" + "\n".join(single) + "\n\n" + "\n".join(two_model) + "\n\n" + \
+        secret_table(rows, verdicts)
     REPORT.write_text(text)
     print(text)
 

@@ -1,4 +1,4 @@
-"""Render the attack transfer report from evidence → results/attack_report.md.
+"""Render the attack transfer report from evidence → report/attack_report.md.
 
 Reader only. Aggregates each run's stored verdicts by the fields on the run
 (model / technique / id); imports nothing from the pipeline — the evidence is
@@ -7,8 +7,8 @@ self-describing, so the report never re-derives fingerprints or re-runs anything
 import json, pathlib, collections
 
 _impl = pathlib.Path(__file__).resolve().parents[1]
-RESULTS = _impl / "results" / "attack.jsonl"
-REPORT = _impl / "results" / "attack_report.md"
+RESULTS = _impl / "report" / "attack.jsonl"
+REPORT = _impl / "report" / "attack_report.md"
 MODELS = ["qwen2.5:3b", "llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]
 TRANSFER = MODELS[1:]
 LABEL = {"system_leaked": "system-leak", "secrets_leaked": "secret-leak"}
