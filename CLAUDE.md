@@ -30,14 +30,18 @@ Read these rules before every change.
 
 - Read my prompt first. Do what it asks — not more, not less.
 
-## 4. Log every step — `docs/CHANGELOG.md`
+## 4. Log the AI-security story — `docs/CHANGELOG.md`
 
-- Keep a running build log at `docs/CHANGELOG.md`: after each meaningful step,
-  append **one concise line** stating exactly what we did.
-- Record especially the actions that leave **no git trace** — installing tools
-  (Ollama, deps), pulling models, machine-level or environment changes, downloads.
-- One line per step, factual, in order. This log is how I track progress and how a
-  reader follows the build step by step. Treat it as first-class — **never skip it**.
+- `docs/CHANGELOG.md` is an **AI-security log**, not a git/software-engineering log.
+  Don't append lines blindly for the sake of it.
+- **Update it before a PR merge**, so we capture what happened in that unit of work.
+- **Log:** changes to the attack/defense posture (a new attack + its ASR, a defense +
+  what it catches/misses and the residual risk, a measurement finding), and actions that
+  leave **no git trace** — installing tools (Ollama, deps), pulling models, machine/env
+  changes, downloads.
+- **Don't log:** renames, refactors, module restructures, "packaged X as Y", or anything
+  git already records. Keep the focus on the security substance.
+- Factual and concise. When in doubt about whether something belongs, **ask me.**
 
 ## Stack
 
