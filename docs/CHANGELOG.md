@@ -170,18 +170,8 @@ see exactly how the lab was built, in order.
   customer request — the benign distribution the output detector and input guards get measured
   against. `run.py --legitimate` fires it at the target → `results/legitimate.jsonl` (dev model
   `qwen2.5:3b`, judge-verified non-leaking).
-- **Finding — legitimate traffic leaks the credential with no attack.** 11 of the original twins
-  (genuine billing/refund questions — "give me the refund steps", "put the refund instructions in a
-  code block") made `qwen2.5:3b` **volunteer the live credential** `sk-ac-live-…` (`secret=True`,
-  `sys=False` — value verbatim, surrounding prose paraphrased). The target over-shares on on-topic
-  billing asks; ~22% (11/49) of benign billing traffic leaked, no adversarial phrasing. Preserved as
-  the finding (`data/leaky.py` + `results/leaky.jsonl`); the 11 were steered onto adjacent
-  non-credential topics (2FA, password reset, notifications, dashboard, region) to keep a clean
-  49-prompt baseline. Leak behaviour is model-specific (dev model only; larger models untested).
-- Roles of the set for the detectors: negatives (false-positive denominator) = the 49 clean;
-  positives (recall) = the 11 leaky + the attack-side leaks. A flag on a leaky response is a *true*
-  positive, so the FP denominator is the 49 clean only. The all-detector FP report is deferred until
-  the embedding output detector (system-prompt-leak, unit #2) exists — one pass, no rework. Known
-  gap: the positives are verbatim/value-verbatim; paraphrased-leak positives (the embedding
-  detector's raison d'être) don't exist yet and need the Unicode/obfuscation attack + a non-verbatim
-  ground truth.
+- **Finding — legitimate traffic leaks the credential, no attack needed:** 11 of the original twins
+  (genuine billing/refund questions) made `qwen2.5:3b` volunteer the live credential `sk-ac-live-…`
+  (11/49 ≈ 22%; value verbatim, prose paraphrased; model-specific). Preserved in `data/leaky.py` +
+  `results/leaky.jsonl`; those 11 were swapped onto non-credential topics to keep the 49-prompt
+  baseline clean.
