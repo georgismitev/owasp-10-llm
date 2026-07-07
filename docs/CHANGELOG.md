@@ -154,3 +154,11 @@ see exactly how the lab was built, in order.
   maximizes recall but *unions* the two models' false positives — unmeasured until the
   legit-traffic assessment; score-level fusion (one threshold over both models' scores) is the
   tunable alternative.
+- **Output-only verbatim tripwire** (`defense/output_tripwire.py`): substring-flags the model's
+  response on any distinctive system-prompt line, the credential value, or the partial
+  `BILLING_API_KEY` label. Over the 300 responses it flags 184 — catches all 168 leaks, plus 16
+  partial-only label matches on judge-clean replies (real partial disclosures + benign env-var
+  talk, incl. the benign control) surfaced for operator review. A cheap floor: recall on real
+  leaks is ~100% *by construction* (it reuses the judge's markers) and it is blind to obfuscation
+  (e.g. the key printed with a dash between each character) — which the embedding detector (the
+  next unit) and the planned Unicode-smuggling attack target.
