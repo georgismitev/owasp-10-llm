@@ -1,6 +1,6 @@
-# OWASP Top 10 for LLM Applications (2025) — hands-on lab
+# OWASP Top 10 for LLM Applications — hands-on lab
 
-Reproduce each OWASP LLM Top 10 (2025) attack against self-hosted open-weight models,
+Reproduce each OWASP LLM Top 10 attack against self-hosted open-weight models,
 ship a defense for each, and **measure the before/after** — so the defense is proven,
 not asserted. For each attack a reader can: **clone → run the attack → see the effect →
 enable the defense → re-run → see the residual risk**, with real numbers at each step.
