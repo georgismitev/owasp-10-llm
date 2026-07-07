@@ -1,14 +1,15 @@
-"""Head-to-head trial: alternative prompt-injection detectors vs the shipped input guard.
+"""Compare candidate input guards over the attack corpus, to pick the input defense.
 
-Runs each detector over the distinct attack prompts + the benign control (read from
-results/attack.jsonl — READ ONLY) and emits results/pi_trial.md. The question is whether
-a challenger recovers the prompts the incumbent (protectai-v2) misses — especially the
-cross-lingual / blunt asks — without newly over-blocking the benign control. This is a
-trial to inform a swap decision; it does not change the shipped input_guard. Detection
-only, no target-model calls.
+Runs each prompt-injection classifier over the distinct attack prompts + the benign
+control (read from results/attack.jsonl — READ ONLY) and emits
+results/input_guard_comparison.md. Two input-defense variants come out of it: the
+single-model input guard (protectai-v2, the incumbent) and a two-model guard
+(protectai-v2 OR wolf-defender, packaged as defense/two_model_guard.py). PIGuard is
+considered and rejected. The final pick — including false positives — is the separate
+legit-traffic assessment. Detection only, model-agnostic (scores the prompt), no
+target-model calls.
 
-Benign-control FP here is directional only (n=1) — the real false-positive rate is the
-separate legit-traffic assessment.
+Benign-control FP here is directional only (n=1).
 """
 import sys, pathlib, json, functools, collections
 import torch
@@ -18,7 +19,7 @@ _impl = pathlib.Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]
 
 ATTACK = _impl / "results" / "attack.jsonl"               # read only
-REPORT = _impl / "results" / "pi_trial.md"
+REPORT = _impl / "results" / "input_guard_comparison.md"
 
 # Each detector: display label, license, HF model id, injection class index, trust_remote_code.
 # Injection index is pinned from each model's config, or (wolf-defender ships opaque
@@ -74,8 +75,9 @@ def main():
     incumbent = DETECTORS[0]["name"]
     misses = [i for i in attacks if not fired[incumbent][i]]     # incumbent says SAFE on an attack
 
-    out = ["# LLM07 impl-01 — prompt-injection detector trial", "",
-           f"Three local detectors over the {len(attacks)} distinct attack prompts + "
+    out = ["# LLM07 impl-01 — input-guard options compared", "",
+           f"Three local prompt-injection classifiers as candidate input guards over the "
+           f"{len(attacks)} distinct attack prompts + "
            f"{len(benign)} benign control, read from the attack evidence. Recall = attack "
            "prompts flagged INJECTION. Benign FP is directional only "
            f"(n={len(benign)}) — the real false-positive rate is the legit-traffic assessment.", "",
@@ -117,14 +119,15 @@ def main():
         marks = " | ".join("✗" if not fired[m][i] else "✓" for m in members)
         out.append(f"| {i} | {e['technique']} | {snippet(e['prompt'])} | {marks} |")
 
-    # Swap vs combine: a challenger that ties recall but catches different prompts is
-    # worth more in an OR-ensemble than as a replacement. Report the union coverage.
+    # The two-model input defense: wolf-defender ties recall but catches a different set, so
+    # rather than swap it in, keep both and OR them — a second input defense. Report its coverage.
     pair = f"{incumbent} ∪ wolf-defender-small"
     union = sum(fired[incumbent][i] or fired["wolf-defender-small"][i] for i in attacks)
     both_miss = [i for i in attacks if not fired[incumbent][i] and not fired["wolf-defender-small"][i]]
-    out += ["", "## Swap, or combine?", "",
-            "wolf-defender ties recall but catches a *different* set — so it's stronger as an "
-            "OR-ensemble (flag if either fires) than as a drop-in replacement.", "",
+    out += ["", "## The two-model input defense", "",
+            "wolf-defender ties recall but catches a *different* set — so instead of swapping it "
+            "in, we keep both and OR them. That's a second input defense alongside the single-model "
+            "guard, packaged as `defense/two_model_guard.py`.", "",
             f"- **{pair}** flags {union}/{len(attacks)} attacks ({100*union/len(attacks):.0f}%); "
             f"the only attack neither catches is {', '.join(both_miss) or 'none'}."]
 
@@ -137,8 +140,8 @@ def main():
             "the two could combine:", "",
             "- **Hard-label OR (measured here).** Max recall, zero tuning. But it also **unions the "
             "false positives** — whenever *either* model over-blocks a benign prompt, so does the "
-            f"ensemble. We never saw that cost: the trial has {len(benign)} benign control and both "
-            "passed it. So the OR *looks* free and isn't proven to be.",
+            f"ensemble. We never saw that cost: this comparison has {len(benign)} benign control and "
+            "both passed it. So the OR *looks* free and isn't proven to be.",
             "- **Score-level fusion (the tunable version).** Combine the two INJECTION softmax "
             "probabilities into one score and threshold once: `max(p_protectai, p_wolf)` behaves "
             "like OR but with a *movable* cutoff instead of two fixed 0.5 boundaries; `mean`/weighted "
@@ -153,7 +156,7 @@ def main():
             "unmeasured here. Ship score fusion with a threshold calibrated on legit traffic where "
             "over-blocking real users is costly; hard-OR is fine where a missed extraction hurts far "
             "more than an occasional false alarm. Either way the FP side is the open question — that "
-            "is the legit-traffic assessment, not this trial."]
+            "is the legit-traffic assessment, not this comparison."]
 
     text = "\n".join(out) + "\n"
     REPORT.write_text(text)
