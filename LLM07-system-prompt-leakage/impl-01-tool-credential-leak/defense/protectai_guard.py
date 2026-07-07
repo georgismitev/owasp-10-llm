@@ -1,4 +1,4 @@
-"""Input-only defense: protectai-v2 prompt-injection classifier (the incumbent guard).
+"""Input-only defense: protectai-v2 prompt-injection classifier.
 
 Wraps protectai/deberta-v3-base-prompt-injection-v2 (local, CPU). flag() returns
 True when the classifier predicts INJECTION. Detection only — it scores the user

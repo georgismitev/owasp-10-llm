@@ -1,10 +1,9 @@
-"""Input-only defense: PIGuard prompt-injection classifier (trialed candidate, not shipped).
+"""Input-only defense: PIGuard prompt-injection classifier.
 
 Wraps leolee99/PIGuard (local, CPU; a DeBERTa-v2 subclass that needs trust_remote_code —
 the custom code is a benign CLS-pooling head). flag() returns True when the classifier
 predicts INJECTION. Detection only — it scores the user prompt, so it is model-agnostic and
-makes no target-model call. Kept so the input-guard comparison can consume it; that
-comparison rejected it (low-false-positive-tuned, under-flags in-distribution).
+makes no target-model call.
 """
 import functools
 import torch
