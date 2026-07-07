@@ -1,6 +1,6 @@
 # LLM07 impl-01 — input-guard options compared
 
-Three local prompt-injection classifiers as candidate input guards over the 49 distinct attack prompts + 1 benign control, read from the attack evidence. Recall = attack prompts flagged INJECTION. Benign FP is directional only (n=1) — the real false-positive rate is the legit-traffic assessment.
+Three local prompt-injection classifiers as candidate input guards over the 49 distinct attack prompts + 1 benign control, read from the attack evidence. Recall = attack prompts flagged INJECTION. Benign FP is directional only (n=1) — the real false-positive rate is the legitimate-traffic assessment.
 
 | detector | license | recall | benign FP |
 |---|---|---|---|

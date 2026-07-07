@@ -62,7 +62,7 @@ benign FP: 0/1 (directional only, n=1)
 
 The two-model recall above is a **hard-label OR**: each model argmaxes at its own 0.5 boundary into a yes/no vote, and the guard fires if *either* votes INJECTION. No score sharing, no threshold — the crudest fusion. Before shipping, weigh three ways to combine:
 
-- **Hard-label OR (today).** Max recall, zero tuning — but it also **unions the false positives**: whenever either model over-blocks a benign prompt, so does the guard. Unmeasured here (1 benign control) — the legit-traffic assessment is what would expose it.
+- **Hard-label OR (today).** Max recall, zero tuning — but it also **unions the false positives**: whenever either model over-blocks a benign prompt, so does the guard. Unmeasured here (1 benign control) — the legitimate-traffic assessment is what would expose it.
 - **Score-level fusion.** Combine the two INJECTION probabilities and threshold once (`max` ≈ OR but with a movable cutoff; `mean`/weighted trades recall for fewer false positives) — the dial for recall vs FP, needing a calibration set.
 - **Cascade.** Run one model, then the other only on what the first passes — same verdict as OR, just cheaper (short-circuits, which `flag()` already does); it changes the outcome only if the second model is a confirmer (AND) rather than a booster.
 

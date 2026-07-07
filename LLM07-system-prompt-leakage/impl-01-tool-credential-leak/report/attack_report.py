@@ -7,7 +7,7 @@ self-describing, so the report never re-derives fingerprints or re-runs anything
 import json, pathlib, collections
 
 _impl = pathlib.Path(__file__).resolve().parents[1]
-RESULTS = _impl / "report" / "attack.jsonl"
+RESULTS = _impl / "results" / "attack.jsonl"
 REPORT = _impl / "report" / "attack_report.md"
 MODELS = ["qwen2.5:3b", "llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"]
 TRANSFER = MODELS[1:]
