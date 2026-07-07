@@ -8,6 +8,7 @@ evidence plus the defense, so the report is the only artifact worth keeping.
 Defenses measured here (one section each):
 - Input-only, single-model (defense/protectai_guard.py).
 - Input-only, two-model (defense/two_model_guard.py) — protectai OR wolf-defender.
+- Output-only, verbatim tripwire (defense/output_tripwire.py) — substring match on the response.
 - Secret-only (defense/secret_scan.py) — gitleaks over the responses.
 Both input guards score the prompt, so each distinct prompt is classified once, not per
 model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legit-traffic
@@ -21,6 +22,7 @@ sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
 from defense.secret_scan import scan
 from defense.protectai_guard import flag as protectai_flag
 from defense.two_model_guard import flag as two_model_flag
+from defense.output_tripwire import flag as output_tripwire_flag
 from target.app import SECRET
 
 ATTACK = _impl / "report" / "attack.jsonl"               # read only
@@ -77,6 +79,36 @@ FUSION_NOTES = [
 ]
 
 
+def output_tripwire_table(rows):
+    """Verbatim output tripwire over the stored responses. Fires on a full system-prompt line or
+    the credential, and on the partial `BILLING_API_KEY` label — either way flagged. Recall on
+    real leaks is ~100% by construction (it reuses the judge's distinctive lines); the partial
+    flags include benign env-var mentions, surfaced for review."""
+    n = len(rows)
+    flagged = [r for r in rows if output_tripwire_flag(r["response"])]
+    leaked = [r for r in rows if r["system_leaked"] or r["secrets_leaked"]]
+    clean = [r for r in rows if not (r["system_leaked"] or r["secrets_leaked"])]
+    caught = sum(output_tripwire_flag(r["response"]) for r in leaked)
+    partial = [r for r in clean if output_tripwire_flag(r["response"])]
+
+    out = ["## Output-only defense (verbatim system-prompt tripwire)", "",
+           "`defense/output_tripwire.py` — substring match over each response. Fires on a full "
+           "system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; "
+           "either way it's flagged. Cheap, and blind by construction to paraphrase / obfuscation "
+           "(the embedding detector is next).", "",
+           f"flags: {len(flagged)}/{n} responses",
+           f"of the {len(leaked)} leaked responses, it catches {caught}",
+           f"partial-only flags on the {len(clean)} judge-clean responses: {len(partial)} — the "
+           "`BILLING_API_KEY` label surfaced without the value. Some are real partial disclosures, "
+           "some are benign env-var talk (incl. the benign control); flagged for an operator to "
+           "review, not auto-blocked.", "",
+           "recall on real leaks is ~100% *by construction* — the markers are the judge's own "
+           "distinctive lines, so it validates nothing new. Its real limit is obfuscated leaks, "
+           "which this corpus doesn't contain yet (see the embedding detector and the planned "
+           "Unicode-smuggling attack)."]
+    return "\n".join(out) + "\n"
+
+
 def leak_form(text):
     """How the leaked secret appears: 'assign' (KEY=secret) or 'bare' (in prose)."""
     j = text.find(SECRET) - 1
@@ -127,8 +159,9 @@ def main():
 
     header = ["# LLM07 impl-01 — defense report", "",
               f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
-              "input-guard variants that classify the prompt before the target, and the secret "
-              "scan (gitleaks) over the responses.", ""]
+              "input-guard variants that classify the prompt before the target, and two output-side "
+              "checks over the responses (a verbatim system-prompt tripwire and the gitleaks secret "
+              "scan).", ""]
     single = guard_section(rows, protectai_flag, "Input-only defense (single-model — protectai-v2)",
                            "`defense/protectai_guard.py` — protectai/deberta-v3-base-prompt-injection-v2. "
                            "It scores the prompt, so the verdict is model-agnostic (classified once, not per model).")
@@ -138,7 +171,7 @@ def main():
                               "catches what protectai alone misses.") + FUSION_NOTES
 
     text = "\n".join(header) + "\n" + "\n".join(single) + "\n\n" + "\n".join(two_model) + "\n\n" + \
-        secret_table(rows, verdicts)
+        output_tripwire_table(rows) + "\n" + secret_table(rows, verdicts)
     REPORT.write_text(text)
     print(text)
 

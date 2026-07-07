@@ -1,6 +1,6 @@
 # LLM07 impl-01 — defense report
 
-defenses measured over the 300-row attack evidence (read only): two input-guard variants that classify the prompt before the target, and the secret scan (gitleaks) over the responses.
+defenses measured over the 300-row attack evidence (read only): two input-guard variants that classify the prompt before the target, and two output-side checks over the responses (a verbatim system-prompt tripwire and the gitleaks secret scan).
 
 ## Input-only defense (single-model — protectai-v2)
 
@@ -65,6 +65,16 @@ The two-model recall above is a **hard-label OR**: each model argmaxes at its ow
 - **Hard-label OR (today).** Max recall, zero tuning — but it also **unions the false positives**: whenever either model over-blocks a benign prompt, so does the guard. Unmeasured here (1 benign control) — the legit-traffic assessment is what would expose it.
 - **Score-level fusion.** Combine the two INJECTION probabilities and threshold once (`max` ≈ OR but with a movable cutoff; `mean`/weighted trades recall for fewer false positives) — the dial for recall vs FP, needing a calibration set.
 - **Cascade.** Run one model, then the other only on what the first passes — same verdict as OR, just cheaper (short-circuits, which `flag()` already does); it changes the outcome only if the second model is a confirmer (AND) rather than a booster.
+
+## Output-only defense (verbatim system-prompt tripwire)
+
+`defense/output_tripwire.py` — substring match over each response. Fires on a full system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; either way it's flagged. Cheap, and blind by construction to paraphrase / obfuscation (the embedding detector is next).
+
+flags: 184/300 responses
+of the 168 leaked responses, it catches 168
+partial-only flags on the 132 judge-clean responses: 16 — the `BILLING_API_KEY` label surfaced without the value. Some are real partial disclosures, some are benign env-var talk (incl. the benign control); flagged for an operator to review, not auto-blocked.
+
+recall on real leaks is ~100% *by construction* — the markers are the judge's own distinctive lines, so it validates nothing new. Its real limit is obfuscated leaks, which this corpus doesn't contain yet (see the embedding detector and the planned Unicode-smuggling attack).
 
 ## Secret-only defense (gitleaks output scan)
 
