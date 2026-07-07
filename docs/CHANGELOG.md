@@ -152,3 +152,8 @@ see exactly how the lab was built, in order.
   under-flags in-distribution (23/49, 47%). Decision: **don't swap** — keep protectai-v2, pair
   it with wolf-defender as an OR-ensemble (union 48/49, 98%; only `structured-01`, the JSON-config
   dump, escapes both). No change to the shipped `input_guard.py`; the trial is evidence only.
+- Extended `pi_trial.md` with a symmetric per-member miss table (protectai-v2 and
+  wolf-defender miss largely disjoint sets — only `structured-01` overlaps) and a
+  "combining in production" note: hard-label OR (what we measured) vs tunable score-level
+  fusion vs cascade, and the caveat that OR unions the false positives (unmeasured here — the
+  legit-traffic assessment is what would expose it).

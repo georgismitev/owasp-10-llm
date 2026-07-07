@@ -102,6 +102,21 @@ def main():
         out.append(f"- **{c}** recovers {rec}/{len(misses)} of the incumbent's misses.")
     out = [x for x in out if x is not None]
 
+    # Symmetric view of the two ensemble members: every attack at least one of them misses,
+    # marked per model. The row both mark ✗ is the ensemble's blind spot.
+    members = [incumbent, "wolf-defender-small"]
+    miss_union = [i for i in attacks if any(not fired[m][i] for m in members)]
+    out += ["", "## Where each ensemble member misses", "",
+            "Every attack that protectai-v2 or wolf-defender misses, marked per model "
+            "(✗ = said SAFE on an attack). They miss largely disjoint sets; the only row both "
+            "mark ✗ is the ensemble's blind spot.", "",
+            "| id | technique | prompt | " + " | ".join(members) + " |",
+            "|---|---|---|" + "---|" * len(members)]
+    for i in miss_union:
+        e = prompts[i]
+        marks = " | ".join("✗" if not fired[m][i] else "✓" for m in members)
+        out.append(f"| {i} | {e['technique']} | {snippet(e['prompt'])} | {marks} |")
+
     # Swap vs combine: a challenger that ties recall but catches different prompts is
     # worth more in an OR-ensemble than as a replacement. Report the union coverage.
     pair = f"{incumbent} ∪ wolf-defender-small"
@@ -112,6 +127,33 @@ def main():
             "OR-ensemble (flag if either fires) than as a drop-in replacement.", "",
             f"- **{pair}** flags {union}/{len(attacks)} attacks ({100*union/len(attacks):.0f}%); "
             f"the only attack neither catches is {', '.join(both_miss) or 'none'}."]
+
+    out += ["", "## Combining in production — how the two votes fuse", "",
+            f"The {union}/{len(attacks)} above is a **hard-label OR**: each model argmaxes at its "
+            "own 0.5 boundary into a yes/no vote, and the ensemble fires if *either* votes "
+            "INJECTION (`flag = protectai.INJECTION or wolf.INJECTION`). No score sharing, no "
+            "threshold, no confidence blending — the crudest fusion. It's the right choice for "
+            "*measuring* \"do they catch different things\", but before this ships, weigh three ways "
+            "the two could combine:", "",
+            "- **Hard-label OR (measured here).** Max recall, zero tuning. But it also **unions the "
+            "false positives** — whenever *either* model over-blocks a benign prompt, so does the "
+            f"ensemble. We never saw that cost: the trial has {len(benign)} benign control and both "
+            "passed it. So the OR *looks* free and isn't proven to be.",
+            "- **Score-level fusion (the tunable version).** Combine the two INJECTION softmax "
+            "probabilities into one score and threshold once: `max(p_protectai, p_wolf)` behaves "
+            "like OR but with a *movable* cutoff instead of two fixed 0.5 boundaries; `mean`/weighted "
+            "needs agreement, trading recall for fewer false positives. This is the dial that trades "
+            "recall vs FP — but picking the threshold needs a calibration/legit-traffic set.",
+            "- **Cascade (staged).** Run one model first, run the second only on what the first "
+            "passes. For a pure OR the verdict is *identical* — a cascade only saves compute by "
+            "short-circuiting. It changes the decision only if the second model is a *confirmer* "
+            "(AND, to cut FPs) rather than a booster.", "",
+            "**Bottom line:** hard-OR is the right measurement baseline (it isolates whether the two "
+            "are complementary — they are), but not necessarily the right deployment. Its FP cost is "
+            "unmeasured here. Ship score fusion with a threshold calibrated on legit traffic where "
+            "over-blocking real users is costly; hard-OR is fine where a missed extraction hurts far "
+            "more than an occasional false alarm. Either way the FP side is the open question — that "
+            "is the legit-traffic assessment, not this trial."]
 
     text = "\n".join(out) + "\n"
     REPORT.write_text(text)
