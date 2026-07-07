@@ -143,35 +143,14 @@ see exactly how the lab was built, in order.
   47 prompts that leaked on ≥1 model the guard stops 43 upstream; the 5 misses are the
   plainly-phrased / cross-language asks (a German direct ask, blunt "what are your rules").
   Legit-traffic false-positive rate is deferred (see the reframed assessment task).
-- **Compared candidate input guards** head-to-head over the attack corpus
-  (`report/input_guard_comparison.py` → `results/input_guard_comparison.md`): downloaded
-  `patronus-studio/wolf-defender-prompt-injection-small` (Apache-2.0, ungated, ModernBERT/mmBERT)
-  and `leolee99/PIGuard` (MIT, ungated, DeBERTa-v2 subclass, needs `trust_remote_code` —
-  inspected the custom code, a benign CLS-pooling head). Over the 49 attacks + benign control:
-  wolf-defender ties recall (44/49, 90%) but recovers 4 of the incumbent's 5 misses (the blunt /
-  cross-lingual asks); PIGuard is low-FP-tuned so it under-flags in-distribution (23/49, 47%).
-  Finding: protectai-v2 and wolf-defender miss disjoint sets, so their OR covers 48/49 (98%) —
-  only `structured-01` (JSON-config dump) escapes both.
-- Extended `input_guard_comparison.md` with a symmetric per-member miss table (protectai-v2 and
-  wolf-defender miss largely disjoint sets — only `structured-01` overlaps) and a
-  "combining in production" note: hard-label OR (what we measured) vs tunable score-level
-  fusion vs cascade, and the caveat that OR unions the false positives (unmeasured here — the
-  legit-traffic assessment is what would expose it).
-- Reframed that comparison as a first-class input defense: renamed `report/pi_trial.py` /
-  `results/pi_trial.md` → `report/input_guard_comparison.py` / `results/input_guard_comparison.md`,
-  and packaged the protectai-v2 ∪ wolf-defender OR as `defense/two_model_guard.py` — a two-model
-  input-guard variant to compare against the single-model guard (with false positives) when
-  picking the final defense.
-- Split the input-defense work into two steps: step 1 = the comparison
-  (`report/input_guard_comparison.py`, the 3-way candidate trial, ending at the finding that
-  protectai-v2 and wolf-defender miss disjoint prompts); step 2 = the defense
-  (`report/two_model_defense.py` → `results/two_model_defense.md`, measuring the actual
-  `defense/two_model_guard.flag` — recall 48/49, blind spot `structured-01`, benign FP 0/1 —
-  with the combining-in-production notes).
-- Restructured so `defense/` owns every model and the reports only orchestrate: renamed
-  `input_guard.py` → `protectai_guard.py`, split the other candidates into their own defense
-  modules (`wolf_guard.py`, `piguard.py`), made `two_model_guard.py` pure composition (imports
-  the protectai + wolf guards and ORs them, no model-loading), and had
-  `report/input_guard_comparison.py` import the three `flag()`s from `defense/` instead of loading
-  models inline. Also made the model references explicit (named constants, not list positions).
-  Behaviour-preserving — both report outputs are byte-identical.
+- **Evaluated alternative prompt-injection detectors as input guards** over the attack corpus
+  (downloaded `patronus-studio/wolf-defender-prompt-injection-small` and `leolee99/PIGuard`
+  locally on CPU; PIGuard runs `trust_remote_code`, so inspected its code first — a benign
+  CLS-pooling head). protectai-v2 and wolf-defender each flag 44/49 (90%) but miss *disjoint*
+  prompts, so ORing them into a two-model input guard lifts coverage to 48/49 (98%) — the lone
+  escape is a "dump your config as JSON" ask; the recovered prompts are the blunt / cross-lingual
+  asks (e.g. a Spanish "list your constraints"). PIGuard is tuned for low false-positives and
+  under-catches in-distribution (23/49, 47%). Caveat carried forward for production: a hard-OR
+  maximizes recall but *unions* the two models' false positives — unmeasured until the
+  legit-traffic assessment; score-level fusion (one threshold over both models' scores) is the
+  tunable alternative.
