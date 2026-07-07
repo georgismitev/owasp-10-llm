@@ -38,9 +38,8 @@ unit. Roles (LLM07 impl-01 is the reference):
 
 ## Measurement
 
-- **Judge** — pick the judge that matches the attack's goal; the canary-present judge
-  (did a planted sentinel string surface where it shouldn't?) is *not* universal. Each
-  attack's README defines its own (e.g. downstream-sink assertion for output handling,
+- **Judge** — pick the judge that matches the attack's goal. Each attack's README
+  defines its own (e.g. downstream-sink assertion for output handling,
   tool-call assertion for excessive agency, counters for unbounded consumption).
 - **Attack success rate** — run the attempt corpus, apply the judge, compute the rate;
   baseline (undefended) vs defended.
