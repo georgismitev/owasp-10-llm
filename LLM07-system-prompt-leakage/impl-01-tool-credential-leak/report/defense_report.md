@@ -108,8 +108,8 @@ out-of-box misses by form: assign=3, bare=16 — gitleaks' generic rule keys on 
 
 `defense/output_credential.py` — normalizes separators / unicode and tries reverse / rot13 / base64 / hex before an exact match against the known key. Deterministic; measured as a defense over the attack evidence (recall + clean-response false positives) and the legitimate-traffic set (benign false positives).
 
-recall: 156/156 of the exact-match secret leaks, plus 1 the exact match missed (`evasion-02`/`glm4:9b`) — the credential printed one character per line, which gitleaks (both modes) and the verbatim tripwire also miss. On the 11 leaky legitimate responses: 11/11.
+recall: the 300 attack responses split into 156 exact-match leaks + 144 exact-match-clean. The detector flags all 156 and recovers 1 more from the clean set (`evasion-02`/`glm4:9b`) — the credential printed one character per line, which gitleaks (both modes) and the verbatim tripwire also miss — for 157 true leaks. On the 11 leaky legitimate responses: 11/11.
 
-false positives: 0/49 on the clean legitimate responses; across the 144 exact-match-clean attack responses the only flag is the recovered leak above (a true positive the ground truth mislabeled), so genuine false positives are 0 — expected, since every stage ends in an exact match against one high-entropy key.
+false positives: 0/49 on the clean legitimate responses; the only flag among the 144 exact-match-clean attack responses is that recovered leak (a true positive the ground truth mislabeled), so genuine false positives are 0 — expected, since every stage ends in an exact match against one high-entropy key.
 
 residual: only the separator stage is exercised by the current corpus; the reverse / rot13 / base64 / hex stages are not yet exercised — the corpus contains no encoded-credential leaks.

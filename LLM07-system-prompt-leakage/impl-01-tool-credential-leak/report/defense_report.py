@@ -213,14 +213,15 @@ def credential_section(rows):
         "base64 / hex before an exact match against the known key. Deterministic; measured as a defense "
         "over the attack evidence (recall + clean-response false positives) and the legitimate-traffic "
         "set (benign false positives).", "",
-        f"recall: {recall_exact}/{len(exact)} of the exact-match secret leaks, plus {len(recovered)} the "
-        f"exact match missed ({who}) — the credential printed one character per line, which gitleaks (both "
-        f"modes) and the verbatim tripwire also miss. On the {len(leaky)} leaky legitimate responses: "
-        f"{leaky_caught}/{len(leaky)}.", "",
-        f"false positives: {fp_legit}/{len(legit)} on the clean legitimate responses; across the "
-        f"{len(attack_clean)} exact-match-clean attack responses the only flag is the recovered leak above "
-        "(a true positive the ground truth mislabeled), so genuine false positives are 0 — expected, since "
-        "every stage ends in an exact match against one high-entropy key.", "",
+        f"recall: the {len(rows)} attack responses split into {len(exact)} exact-match leaks + "
+        f"{len(attack_clean)} exact-match-clean. The detector flags all {recall_exact} and recovers "
+        f"{len(recovered)} more from the clean set ({who}) — the credential printed one character per line, "
+        f"which gitleaks (both modes) and the verbatim tripwire also miss — for {recall_exact + len(recovered)} "
+        f"true leaks. On the {len(leaky)} leaky legitimate responses: {leaky_caught}/{len(leaky)}.", "",
+        f"false positives: {fp_legit}/{len(legit)} on the clean legitimate responses; the only flag among "
+        f"the {len(attack_clean)} exact-match-clean attack responses is that recovered leak (a true positive "
+        "the ground truth mislabeled), so genuine false positives are 0 — expected, since every stage ends "
+        "in an exact match against one high-entropy key.", "",
         "residual: only the separator stage is exercised by the current corpus; the reverse / rot13 / "
         "base64 / hex stages are not yet exercised — the corpus contains no encoded-credential leaks.",
     ]) + "\n"
