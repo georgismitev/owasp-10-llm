@@ -52,6 +52,13 @@ Read these rules before every change.
   git already records. Keep the focus on the security substance.
 - Factual and concise. When in doubt about whether something belongs, **ask me.**
 
+## 5. Naming and language
+
+Write in full, professional words — in code, comments, documentation, and commit
+messages alike. No slang or casual abbreviations: use `legitimate`, not `legit`; name
+the identifier `LEGITIMATE`, not `LEGIT`. Names and prose should read as clear,
+deliberate English.
+
 ## Stack
 
 - **Python.** No notebooks.
