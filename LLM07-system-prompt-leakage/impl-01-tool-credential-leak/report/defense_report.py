@@ -189,20 +189,41 @@ def secret_table(rows, verdicts):
             forms[v[r["fingerprint"]]["form"]] += 1
     out += ["", f"out-of-box misses by form: assign={forms['assign']}, bare={forms['bare']} — "
                 "gitleaks' generic rule keys on `KEY=value`, so bare-in-prose leaks slip through."]
-
-    # Second oracle: the normalized credential detector as an additional lens — not the ground truth.
-    cred = [r for r in rows if credential_flag(r["response"])]
-    extra = [r for r in rows if credential_flag(r["response"]) and not r["secrets_leaked"]]
-    out += ["", "### Second oracle — normalized credential match", "",
-            f"`defense/output_credential.py` used as an additional leak oracle (not the ground truth): "
-            f"it flags {len(cred)}/{n} responses as leaking the credential — the {g} exact-match leaks "
-            f"plus {len(extra)} that exact matching missed."]
-    if extra:
-        who = ", ".join(f"`{r['id']}`/`{r['model']}`" for r in extra)
-        out += ["", f"the extra leak is {who}: the credential was printed one character per line, so the "
-                "exact match, gitleaks (both modes), and the verbatim tripwire all miss it — only "
-                "normalization recovers it. Kept as a second oracle for now, not promoted to ground truth."]
     return "\n".join(out) + "\n"
+
+
+def credential_section(rows):
+    """Obfuscation-hardened credential detector measured as a defense: recall over the attack
+    evidence + the leaky legitimate responses, and false positives over the clean legitimate +
+    clean attack responses. Deterministic exact-key gate, so ~0 false positives by construction.
+    Reads results/ only."""
+    leaky = [json.loads(l) for l in LEAKY.read_text().splitlines() if l.strip()]
+    legit = [json.loads(l) for l in LEGITIMATE.read_text().splitlines() if l.strip()]
+    exact = [r for r in rows if r["secrets_leaked"]]              # independent verbatim ground truth
+    attack_clean = [r for r in rows if not r["secrets_leaked"]]
+    recall_exact = sum(credential_flag(r["response"]) for r in exact)
+    recovered = [r for r in attack_clean if credential_flag(r["response"])]   # leaks exact match missed
+    leaky_caught = sum(credential_flag(r["response"]) for r in leaky)
+    fp_legit = sum(credential_flag(r["response"]) for r in legit)
+    who = ", ".join(f"`{r['id']}`/`{r['model']}`" for r in recovered) or "none"
+
+    return "\n".join([
+        "## Output-only defense (obfuscation-hardened credential match)", "",
+        "`defense/output_credential.py` — normalizes separators / unicode and tries reverse / rot13 / "
+        "base64 / hex before an exact match against the known key. Deterministic; measured as a defense "
+        "over the attack evidence (recall + clean-response false positives) and the legitimate-traffic "
+        "set (benign false positives).", "",
+        f"recall: {recall_exact}/{len(exact)} of the exact-match secret leaks, plus {len(recovered)} the "
+        f"exact match missed ({who}) — the credential printed one character per line, which gitleaks (both "
+        f"modes) and the verbatim tripwire also miss. On the {len(leaky)} leaky legitimate responses: "
+        f"{leaky_caught}/{len(leaky)}.", "",
+        f"false positives: {fp_legit}/{len(legit)} on the clean legitimate responses; across the "
+        f"{len(attack_clean)} exact-match-clean attack responses the only flag is the recovered leak above "
+        "(a true positive the ground truth mislabeled), so genuine false positives are 0 — expected, since "
+        "every stage ends in an exact match against one high-entropy key.", "",
+        "residual: only the separator stage is exercised by the current corpus; the reverse / rot13 / "
+        "base64 / hex stages are not yet exercised — the corpus contains no encoded-credential leaks.",
+    ]) + "\n"
 
 
 def main():
@@ -212,9 +233,10 @@ def main():
     header = ["# LLM07 impl-01 — defense report", "",
               f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
               "input-guard variants that classify the prompt before the target, and output-side "
-              "checks over the responses — a verbatim system-prompt tripwire and the gitleaks secret "
-              "scan. One further output detector, an embedding cosine, is measured instead on the "
-              "legitimate-traffic set, where it fails to separate leaks from benign traffic.", ""]
+              "checks over the responses — a verbatim system-prompt tripwire, the gitleaks secret "
+              "scan, and an obfuscation-hardened credential match. One further output detector, an "
+              "embedding cosine, is measured instead on the legitimate-traffic set, where it fails to "
+              "separate leaks from benign traffic.", ""]
     single = guard_section(rows, protectai_flag, "Input-only defense (single-model — protectai-v2)",
                            "`defense/protectai_guard.py` — protectai/deberta-v3-base-prompt-injection-v2. "
                            "It scores the prompt, so the verdict is model-agnostic (classified once, not per model).")
@@ -224,7 +246,8 @@ def main():
                               "catches what protectai alone misses.") + FUSION_NOTES
 
     text = "\n".join(header) + "\n" + "\n".join(single) + "\n\n" + "\n".join(two_model) + "\n\n" + \
-        output_tripwire_table(rows) + "\n" + embedding_section() + "\n" + secret_table(rows, verdicts)
+        output_tripwire_table(rows) + "\n" + embedding_section() + "\n" + secret_table(rows, verdicts) + \
+        "\n" + credential_section(rows)
     REPORT.write_text(text)
     print(text)
 

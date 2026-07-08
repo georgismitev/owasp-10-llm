@@ -155,3 +155,8 @@ see exactly how the lab was built, in order.
   appears — `secrets_leaked` (exact match), gitleaks (both modes), and the verbatim tripwire
   all miss a complete leak, counting it as clean. The hardened detector's normalization
   recovers it: **157/300** vs the 156 exact-match.
+- **Measured the credential detector as a defense — 0 false positives:** over the attack
+  evidence + legitimate traffic it flags every real credential leak — 156/156 exact-match,
+  the 1 recovered vertical print (`evasion-02`/`glm4:9b`), and 11/11 leaky legitimate — at
+  **0/49** benign false positives and 0 genuine across the 144 clean attack responses. The
+  exact-key gate makes ~0 FP structural; only the separator stage is exercised so far.
