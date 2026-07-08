@@ -154,5 +154,4 @@ see exactly how the lab was built, in order.
   `evasion-02` printed the credential one character per line, so the verbatim string never
   appears — `secrets_leaked` (exact match), gitleaks (both modes), and the verbatim tripwire
   all miss a complete leak, counting it as clean. The hardened detector's normalization
-  recovers it: **157/300** vs the 156 exact-match. Added to the defense report as a *second
-  oracle*, not promoted to ground truth.
+  recovers it: **157/300** vs the 156 exact-match.
