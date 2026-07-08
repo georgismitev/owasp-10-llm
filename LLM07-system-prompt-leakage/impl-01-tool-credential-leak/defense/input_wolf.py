@@ -3,7 +3,7 @@
 Wraps patronus-studio/wolf-defender-prompt-injection-small (local, CPU; multilingual
 ModernBERT/mmBERT). flag() returns True when the classifier predicts INJECTION. Detection
 only — it scores the user prompt, so it is model-agnostic and makes no target-model call.
-Composed with the protectai guard in two_model_guard.py.
+Composed with the protectai guard in input_two_model.py.
 """
 import functools
 import torch

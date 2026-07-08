@@ -41,4 +41,4 @@ Every attack that protectai-v2 or wolf-defender misses, marked per model (✗ = 
 
 ## Finding
 
-protectai-v2 and wolf-defender tie on recall (44/49 and 44/49) but miss *different* prompts — only structured-01 escapes both. They're complementary, not redundant, so combining them should cover nearly everything. That's the next step: the two-model input defense `defense/two_model_guard.py`, built and measured in `two_model_defense.md`.
+protectai-v2 and wolf-defender tie on recall (44/49 and 44/49) but miss *different* prompts — only structured-01 escapes both. They're complementary, not redundant, so combining them should cover nearly everything. That's the next step: the two-model input defense `defense/input_two_model.py`, built and measured in `two_model_defense.md`.

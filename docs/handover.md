@@ -15,7 +15,7 @@ sharp high-severity sub-case. All merged work is on `main`.
   106/300, secret-leak 156/300.
 - Secret-only defense (gitleaks).
 - Input-only defense (prompt-injection classifier) — single-model and two-model variants.
-- Output-only verbatim tripwire.
+- Output-only literal string match.
 - Legitimate-traffic corpus (49 clean) and the finding that benign billing traffic makes
   the dev model volunteer the credential (11/49, no attack).
 
