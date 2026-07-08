@@ -135,3 +135,14 @@ see exactly how the lab was built, in order.
   credential `sk-ac-live-…` (11/49 ≈ 22%; value verbatim, prose paraphrased). Preserved in
   `data/leaky.py` + `results/leaky.jsonl`; the 11 were swapped onto non-credential topics
   to keep the baseline clean.
+
+## 2026-07-08
+
+- **Output-only embedding detector — failed separability (measurement finding):** cosine
+  between the response and the system prompt (`all-MiniLM-L6-v2`) cannot separate real leaks
+  from benign on-topic traffic. Swept over the legitimate-traffic set (49 clean vs 11 leaky):
+  at the 0.60 cutoff 13/49 (27%) false positives for 9/11 (82%) recall, and pushing the
+  false-positive rate down only sheds recall. Cause: whole-prompt cosine measures billing-topic
+  overlap, not recitation — the topicality confound. Recorded the scorer as a documented
+  dead-end with a reproducible sweep harness (`report/embedding_separability.py`) and folded
+  the result into the defense report.
