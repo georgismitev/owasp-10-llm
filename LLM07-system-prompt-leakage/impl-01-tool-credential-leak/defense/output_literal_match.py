@@ -1,4 +1,4 @@
-"""Output-only defense: flag a response that recites the system prompt (verbatim tripwire).
+"""Output-only defense: flag a response that recites the system prompt (literal string match).
 
 Substring match over the model's response. Fires on the full prompt (a distinctive
 system-prompt line or the credential value) or a partial match (the credential's config

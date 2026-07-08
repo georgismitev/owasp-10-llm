@@ -1,6 +1,6 @@
 """Output-only defense #2: flag a response that is semantically close to the system prompt.
 
-Catches paraphrased / obfuscated recitation the verbatim tripwire (output_tripwire.py) misses.
+Catches paraphrased / obfuscated recitation the literal match (output_literal_match.py) misses.
 Embeds the response and the known SYSTEM_PROMPT with all-MiniLM-L6-v2 (mean-pooled over tokens,
 L2-normalized) and scores their cosine similarity; flags at a calibrated THRESHOLD. Loads the
 local model through transformers — no sentence-transformers dependency. Detection only.

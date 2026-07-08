@@ -4,7 +4,7 @@ Wraps protectai/deberta-v3-base-prompt-injection-v2 (local, CPU). flag() returns
 True when the classifier predicts INJECTION. Detection only — it scores the user
 prompt, so it is model-agnostic (independent of which target model would answer)
 and makes no target-model call. No blocking or rewriting here. Composed with the
-wolf-defender guard in two_model_guard.py.
+wolf-defender guard in input_two_model.py.
 """
 import functools
 import torch

@@ -6,12 +6,12 @@ Verdicts are computed in memory, not persisted — they're a deterministic funct
 evidence plus the defense, so the report is the only artifact worth keeping.
 
 Defenses measured here (one section each):
-- Input-only, single-model (defense/protectai_guard.py).
-- Input-only, two-model (defense/two_model_guard.py) — protectai OR wolf-defender.
-- Output-only, verbatim tripwire (defense/output_tripwire.py) — substring match on the response.
+- Input-only, single-model (defense/input_protectai.py).
+- Input-only, two-model (defense/input_two_model.py) — protectai OR wolf-defender.
+- Output-only, literal string match (defense/output_literal_match.py) — substring match on the response.
 - Output-only, embedding cosine (defense/output_embedding.py) — FAILED separability; measured on
   the legitimate-traffic set, not the attack evidence.
-- Secret-only (defense/secret_scan.py) — gitleaks over the responses.
+- Secret-only (defense/output_secret_scan.py) — gitleaks over the responses.
 Both input guards score the prompt, so each distinct prompt is classified once, not per
 model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legitimate-traffic
 false-positive rates are a separate assessment (deferred task). How we picked the input-guard
@@ -21,10 +21,10 @@ import sys, pathlib, json, collections
 _impl = pathlib.Path(__file__).resolve().parents[1]       # impl-01-… dir
 sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
 
-from defense.secret_scan import scan
-from defense.protectai_guard import flag as protectai_flag
-from defense.two_model_guard import flag as two_model_flag
-from defense.output_tripwire import flag as output_tripwire_flag
+from defense.output_secret_scan import scan
+from defense.input_protectai import flag as protectai_flag
+from defense.input_two_model import flag as two_model_flag
+from defense.output_literal_match import flag as literal_match_flag
 from defense.output_credential import flag as credential_flag
 from target.app import SECRET
 
@@ -85,20 +85,20 @@ FUSION_NOTES = [
 ]
 
 
-def output_tripwire_table(rows):
-    """Verbatim output tripwire over the stored responses. Fires on a full system-prompt line or
+def literal_match_table(rows):
+    """Verbatim literal match over the stored responses. Fires on a full system-prompt line or
     the credential, and on the partial `BILLING_API_KEY` label — either way flagged. Recall on
     real leaks is ~100% by construction (it reuses the judge's distinctive lines); the partial
     flags include benign env-var mentions, surfaced for review."""
     n = len(rows)
-    flagged = [r for r in rows if output_tripwire_flag(r["response"])]
+    flagged = [r for r in rows if literal_match_flag(r["response"])]
     leaked = [r for r in rows if r["system_leaked"] or r["secrets_leaked"]]
     clean = [r for r in rows if not (r["system_leaked"] or r["secrets_leaked"])]
-    caught = sum(output_tripwire_flag(r["response"]) for r in leaked)
-    partial = [r for r in clean if output_tripwire_flag(r["response"])]
+    caught = sum(literal_match_flag(r["response"]) for r in leaked)
+    partial = [r for r in clean if literal_match_flag(r["response"])]
 
-    out = ["## Output-only defense (verbatim system-prompt tripwire)", "",
-           "`defense/output_tripwire.py` — substring match over each response. Fires on a full "
+    out = ["## Output-only defense (literal string match)", "",
+           "`defense/output_literal_match.py` — substring match over each response. Fires on a full "
            "system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; "
            "either way it's flagged. Cheap, and blind by construction to paraphrase (the embedding "
            "detector below) and to obfuscation of the credential (defense/output_credential.py).", "",
@@ -129,7 +129,7 @@ def embedding_section():
 
     out = ["## Output-only defense (embedding cosine — failed separability)", "",
            "`defense/output_embedding.py` — cosine(response, SYSTEM_PROMPT) with all-MiniLM-L6-v2, "
-           "meant to catch the paraphrased recitation the verbatim tripwire misses. Measured on the "
+           "meant to catch the paraphrased recitation the literal match misses. Measured on the "
            "legitimate-traffic set (not the 300-row attack evidence): false positives over the "
            f"{nc} clean legitimate responses against recall over the {nl} that leaked the credential.",
            "", f"| threshold | FP / {nc} clean | recall / {nl} leaky |", "|---|---|---|"]
@@ -216,7 +216,7 @@ def credential_section(rows):
         f"recall: the {len(rows)} attack responses split into {len(exact)} exact-match leaks + "
         f"{len(attack_clean)} exact-match-clean. The detector flags all {recall_exact} and recovers "
         f"{len(recovered)} more from the clean set ({who}) — the credential printed one character per line, "
-        f"which gitleaks (both modes) and the verbatim tripwire also miss — for {recall_exact + len(recovered)} "
+        f"which gitleaks (both modes) and the literal match also miss — for {recall_exact + len(recovered)} "
         f"true leaks. On the {len(leaky)} leaky legitimate responses: {leaky_caught}/{len(leaky)}.", "",
         f"false positives: {fp_legit}/{len(legit)} on the clean legitimate responses; the only flag among "
         f"the {len(attack_clean)} exact-match-clean attack responses is that recovered leak (a true positive "
@@ -234,20 +234,20 @@ def main():
     header = ["# LLM07 impl-01 — defense report", "",
               f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
               "input-guard variants that classify the prompt before the target, and output-side "
-              "checks over the responses — a verbatim system-prompt tripwire, the gitleaks secret "
+              "checks over the responses — a literal system-prompt match, the gitleaks secret "
               "scan, and an obfuscation-hardened credential match. One further output detector, an "
               "embedding cosine, is measured instead on the legitimate-traffic set, where it fails to "
               "separate leaks from benign traffic.", ""]
     single = guard_section(rows, protectai_flag, "Input-only defense (single-model — protectai-v2)",
-                           "`defense/protectai_guard.py` — protectai/deberta-v3-base-prompt-injection-v2. "
+                           "`defense/input_protectai.py` — protectai/deberta-v3-base-prompt-injection-v2. "
                            "It scores the prompt, so the verdict is model-agnostic (classified once, not per model).")
     two_model = guard_section(rows, two_model_flag,
                               "Input-only defense (two-model — protectai-v2 ∪ wolf-defender)",
-                              "`defense/two_model_guard.py` = protectai-v2 **OR** wolf-defender (hard-label OR) — "
+                              "`defense/input_two_model.py` = protectai-v2 **OR** wolf-defender (hard-label OR) — "
                               "catches what protectai alone misses.") + FUSION_NOTES
 
     text = "\n".join(header) + "\n" + "\n".join(single) + "\n\n" + "\n".join(two_model) + "\n\n" + \
-        output_tripwire_table(rows) + "\n" + embedding_section() + "\n" + secret_table(rows, verdicts) + \
+        literal_match_table(rows) + "\n" + embedding_section() + "\n" + secret_table(rows, verdicts) + \
         "\n" + credential_section(rows)
     REPORT.write_text(text)
     print(text)
