@@ -26,7 +26,7 @@ Other machinery (corpora, judges, defenses, reports) lives per-lab rather than i
 ## Per-lab layout
 
 Each implementation is a self-contained target → attack → judge → defense → measurement
-unit. Roles (LLM07 impl-01 is the reference):
+unit. Roles (LLM07 is the reference):
 
 - `target/` — the minimal vulnerable app under test.
 - `data/` — the send corpora (attack prompts, legitimate prompts).

@@ -129,8 +129,46 @@ Plus one timeboxed bypass of our own defense, documented as residual risk.
 
 ---
 
-## Implementations
+## This implementation — tool credential leak
 
-| Impl | Scenario | Judge |
-|---|---|---|
-| [`impl-01-tool-credential-leak`](impl-01-tool-credential-leak/) | #1 — sentinel credential planted in the system prompt | canary-present |
+This lab **is** the implementation of the tool-credential-leak case (Scenario #1):
+a sentinel credential is planted in the system prompt, and success is either tier of
+leak — the system-prompt text (persona / rules) recited, or the sharp sub-case where
+the exact planted credential surfaces. The credential is the high-severity,
+objectively-detectable case; the judge is canary-present.
+
+### Layout
+
+- **`target/`** — the vulnerable app: a system prompt carrying the planted secret
+  for a notional tool, served through the `labkit` client.
+- **`data/`** — the send corpora: the extraction-attempt prompts and the legitimate prompts.
+- **`run.py`** — the runner: fires each prompt and logs request / response / leaked? /
+  latency to `results/`.
+- **`results/`** — the run evidence (append-only JSONL, **immutable**); only the runner writes it.
+- **`eval/`** — imports `labkit`: a two-tier leak judge (system-prompt text; the credential
+  sub-case) + ASR per tier (verdict-stable at `temp=0`, though outputs are not
+  byte-identical; no N-sampling).
+- **`defense/`** — input- and output-side filters targeting system-prompt leakage (both
+  tiers), toggled by `DEFENSE=on`, no code edit.
+- **`report/`** — the report generators and the reports they render (`attack_report.md`,
+  `defense_report.md`, `input_guard_comparison.md`) over the immutable evidence.
+
+### Models
+
+Crafted against `qwen2.5:3b`, then run across the transfer set (`llama3.1:8b`,
+`gemma3:12b`, `glm4:9b`, `mistral:7b`, `qwen3.5:9b`) to test whether the leak
+transfers. Pinned: `temp=0`, `seed=0`.
+
+### Run
+
+The planned Makefile contract (targets not yet wired):
+
+| Target | Does |
+|---|---|
+| `make up` | bring up the target |
+| `make attack` | run the attack against the undefended target |
+| `make eval` | baseline ASR over the corpus → `report/` |
+| `make defend` | enable the defense (`DEFENSE=on`) |
+| `make eval-defended` | defended ASR + utility retention → `report/` |
+| `make report` | baseline vs defended vs utility → `report/` |
+| `make down` | tear down |

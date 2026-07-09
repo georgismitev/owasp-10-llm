@@ -15,7 +15,7 @@ Benign-control FP here is directional only (n=1).
 import sys, pathlib, json, collections
 
 _impl = pathlib.Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(_impl.parents[1]), str(_impl)]
+sys.path[:0] = [str(_impl.parents[0]), str(_impl)]
 
 from defense.input_protectai import flag as protectai_flag
 from defense.input_wolf import flag as wolf_flag
@@ -63,7 +63,7 @@ def main():
     fired = {name: {i: GUARDS[name]["flag"](prompts[i]["prompt"]) for i in prompts} for name in ORDER}
     incumbent_misses = [i for i in attacks if not fired[PROTECTAI][i]]   # attacks protectai-v2 calls SAFE
 
-    out = ["# LLM07 impl-01 — input-guard options compared", "",
+    out = ["# LLM07 — input-guard options compared", "",
            f"Three local prompt-injection classifiers as candidate input guards over the "
            f"{len(attacks)} distinct attack prompts + {len(benign)} benign control, read from the "
            "attack evidence. Recall = attack prompts flagged INJECTION. Benign FP is directional "

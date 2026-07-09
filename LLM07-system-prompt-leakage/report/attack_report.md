@@ -1,4 +1,4 @@
-# LLM07 impl-01 — transfer report
+# LLM07 — transfer report
 
 corpus: 50 attempts · judge: literal string-match (canary + keyword)
 counts are over a hand-built corpus — comparative across models, not a severity score.

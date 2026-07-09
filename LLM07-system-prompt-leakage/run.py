@@ -11,8 +11,8 @@ fingerprint (model + system + prompt + params) so a changed prompt never reuses 
 stale run and reruns are resumable.
 """
 import os, sys, pathlib, json, hashlib
-_impl = pathlib.Path(__file__).resolve().parent           # impl-01-… dir
-sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
+_impl = pathlib.Path(__file__).resolve().parent           # the lab dir
+sys.path[:0] = [str(_impl.parents[0]), str(_impl)]        # repo root + lab dir
 
 from target.app import answer, SYSTEM_PROMPT
 from data.attack import ATTEMPTS

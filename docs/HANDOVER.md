@@ -5,7 +5,7 @@ and next-step titles + status only** — never execution plans, recipes, or "nex
 framing (see `CLAUDE.md` rule #1). The *what* and *where it stands*, not the *how*; the
 how is decided with the lead when the step is taken up.
 
-## Current state — LLM07 impl-01 (tool-credential leak)
+## Current state — LLM07 (tool-credential leak)
 
 The first flagship: **system-prompt leakage**, with a planted tool credential as the
 sharp high-severity sub-case. All merged work is on `main`.
