@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python scripts/validate_corpus_format.py"
+            "command": "python3 scripts/validate_corpus_format.py"
           }
         ]
       }
