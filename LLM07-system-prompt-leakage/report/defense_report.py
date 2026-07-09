@@ -18,8 +18,8 @@ false-positive rates are a separate assessment (deferred task). How we picked th
 models is a separate analysis (report/input_guard_comparison.md).
 """
 import sys, pathlib, json, collections
-_impl = pathlib.Path(__file__).resolve().parents[1]       # impl-01-… dir
-sys.path[:0] = [str(_impl.parents[1]), str(_impl)]        # repo root + impl dir
+_impl = pathlib.Path(__file__).resolve().parents[1]       # the lab dir
+sys.path[:0] = [str(_impl.parents[0]), str(_impl)]        # repo root + lab dir
 
 from defense.output_secret_scan import scan
 from defense.input_protectai import flag as protectai_flag
@@ -231,7 +231,7 @@ def main():
     rows = [json.loads(l) for l in ATTACK.read_text().splitlines() if l.strip()]
     verdicts = score(rows)                                 # in memory only — not persisted
 
-    header = ["# LLM07 impl-01 — defense report", "",
+    header = ["# LLM07 — defense report", "",
               f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
               "input-guard variants that classify the prompt before the target, and output-side "
               "checks over the responses — a literal system-prompt match, the gitleaks secret "

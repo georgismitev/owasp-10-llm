@@ -9,7 +9,7 @@ over the evidence; prints the FP/recall curve so the report figure is reproducib
 """
 import sys, pathlib, json
 _impl = pathlib.Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(_impl.parents[1]), str(_impl)]
+sys.path[:0] = [str(_impl.parents[0]), str(_impl)]
 
 from defense.output_embedding import score
 

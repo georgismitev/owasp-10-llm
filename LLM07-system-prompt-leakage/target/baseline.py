@@ -4,8 +4,8 @@ The non-adversarial reference point — it should answer normally and NOT leak.
 Run: uv run python target/baseline.py
 """
 import sys, pathlib
-_impl = pathlib.Path(__file__).resolve().parents[1]        # the impl-01-… dir
-sys.path[:0] = [str(_impl.parents[1]), str(_impl)]         # repo root + impl dir
+_impl = pathlib.Path(__file__).resolve().parents[1]        # the lab dir
+sys.path[:0] = [str(_impl.parents[0]), str(_impl)]         # repo root + lab dir
 
 from target.app import answer, SECRET
 

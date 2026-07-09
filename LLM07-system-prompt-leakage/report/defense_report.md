@@ -1,4 +1,4 @@
-# LLM07 impl-01 — defense report
+# LLM07 — defense report
 
 defenses measured over the 300-row attack evidence (read only): two input-guard variants that classify the prompt before the target, and output-side checks over the responses — a literal system-prompt match, the gitleaks secret scan, and an obfuscation-hardened credential match. One further output detector, an embedding cosine, is measured instead on the legitimate-traffic set, where it fails to separate leaks from benign traffic.
 

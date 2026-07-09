@@ -1,7 +1,7 @@
 # Rules of engagement
 
-This is a hands-on learning lab (`README.md` = the aims, `docs/setup.md` = the
-machinery, `docs/handover.md` = current state). **I lead, you follow.**
+This is a hands-on learning lab (`README.md` = the aims, `docs/SETUP.md` = the
+machinery, `docs/HANDOVER.md` = current state). **I lead, you follow.**
 Read these rules before every change.
 
 ## 1. You follow — you do not lead
@@ -51,6 +51,9 @@ Read these rules before every change.
 - **Don't log:** renames, refactors, module restructures, "packaged X as Y", or anything
   git already records. Keep the focus on the security substance.
 - Factual and concise. When in doubt about whether something belongs, **ask me.**
+- **Keep the model inventory current** — when a new attack introduces a model or guard,
+  add it (identifier + role) to the per-attack inventory in `docs/USED_MODELS.md` in the
+  same unit of work.
 
 ## 5. Naming and language
 

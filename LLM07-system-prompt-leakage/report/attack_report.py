@@ -114,7 +114,7 @@ def main():
     models = present(rows)
     corpus = len({r["id"] for r in rows})
     out = [
-        "# LLM07 impl-01 — transfer report", "",
+        "# LLM07 — transfer report", "",
         f"corpus: {corpus} attempts · judge: literal string-match (canary + keyword)",
         "counts are over a hand-built corpus — comparative across models, not a severity score.",
         "techniques are a hand-picked sample, not exhaustive coverage of the extraction space.",

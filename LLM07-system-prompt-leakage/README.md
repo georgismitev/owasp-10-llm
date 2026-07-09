@@ -129,8 +129,36 @@ Plus one timeboxed bypass of our own defense, documented as residual risk.
 
 ---
 
-## Implementations
+## This implementation — tool credential leak
 
-| Impl | Scenario | Judge |
-|---|---|---|
-| [`impl-01-tool-credential-leak`](impl-01-tool-credential-leak/) | #1 — sentinel credential planted in the system prompt | canary-present |
+This lab implements Scenario #1 (see **OWASP mapping** above): the system prompt
+contains credentials for a tool the model can use, and the vulnerability is that the
+**system prompt leaks** to an attacker — extracting the prompt discloses the
+credentials it carries, which the attacker can then reuse elsewhere. We assess the leak
+at two granularities: whether distinctive parts of the system prompt — the persona and
+rules lines — have been recited, partially or in full, and, as the sharp
+objectively-detectable sub-case, whether the planted sentinel credential (a unique fake
+marker with no real privilege) surfaces in the output. Any of these means the system
+prompt has leaked.
+
+### Layout
+
+- **`target/`** — the vulnerable app: a system prompt carrying the planted secret
+  for a notional tool, served through the `labkit` client.
+- **`data/`** — the send corpora: the extraction-attempt prompts and the legitimate prompts.
+- **`run.py`** — the runner: fires each prompt and logs request / response / leaked? /
+  latency to `results/`.
+- **`results/`** — the run evidence (append-only JSONL, **immutable**); only the runner writes it.
+- **`eval/`** — imports `labkit`: a two-tier leak judge (system-prompt text; the credential
+  sub-case) + ASR per tier (verdict-stable at `temp=0`, though outputs are not
+  byte-identical; no N-sampling).
+- **`defense/`** — input- and output-side filters targeting system-prompt leakage (both
+  tiers), toggled by `DEFENSE=on`, no code edit.
+- **`report/`** — the report generators and the reports they render (`attack_report.md`,
+  `defense_report.md`, `input_guard_comparison.md`) over the immutable evidence.
+
+### Models
+
+Crafted against `qwen2.5:3b`, then run across the transfer set (`llama3.1:8b`,
+`gemma3:12b`, `glm4:9b`, `mistral:7b`, `qwen3.5:9b`) to test whether the leak
+transfers. Pinned: `temp=0`, `seed=0`.
