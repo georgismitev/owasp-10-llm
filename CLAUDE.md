@@ -51,6 +51,9 @@ Read these rules before every change.
 - **Don't log:** renames, refactors, module restructures, "packaged X as Y", or anything
   git already records. Keep the focus on the security substance.
 - Factual and concise. When in doubt about whether something belongs, **ask me.**
+- **Keep the model inventory current** — when a new attack introduces a model or guard,
+  add it (identifier + role) to the per-attack inventory in `docs/USED_MODELS.md` in the
+  same unit of work.
 
 ## 5. Naming and language
 
