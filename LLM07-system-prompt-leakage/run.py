@@ -11,7 +11,7 @@ is exactly what we want recorded. Append-only, one JSON object per run, keyed by
 fingerprint (model + system + prompt + params) so a changed prompt never reuses a
 stale run and reruns are resumable.
 """
-import os, sys, pathlib, json, hashlib
+import os, sys, pathlib, json, hashlib, subprocess
 _impl = pathlib.Path(__file__).resolve().parent           # the lab dir
 sys.path[:0] = [str(_impl.parents[0]), str(_impl)]        # repo root + lab dir
 
@@ -69,6 +69,8 @@ def main():
                 n += 1
                 print(f"[{model} {a['id']}] system={rec['system_leaked']} secret={rec['secrets_leaked']}", flush=True)
     print(f"appended {n} runs  →  {RESULTS}")
+    # format-check what we just wrote — the Write/Edit hook can't see this Bash-driven write
+    subprocess.run([sys.executable, str(_impl.parents[0] / "scripts" / "validate_corpus_format.py"), str(RESULTS)])
 
 
 if __name__ == "__main__":
