@@ -11,6 +11,8 @@ Defenses measured here (one section each):
 - Output-only, literal string match (defense/output_literal_match.py) — substring match on the response.
 - Output-only, embedding cosine (defense/output_embedding.py) — FAILED separability; measured on
   the legitimate-traffic set, not the attack evidence.
+- Output-only, NLI entailment (defense/output_nli_entailment.py) — reworded-recitation check;
+  measured on the legitimate-traffic set and a reworded-leak probe set (results/paraphrase.jsonl).
 - Secret-only (defense/output_secret_scan.py) — gitleaks over the responses.
 Both input guards score the prompt, so each distinct prompt is classified once, not per
 model. Ground truth = system_leaked / secrets_leaked from the attack evidence. Legitimate-traffic
@@ -227,6 +229,72 @@ def credential_section(rows):
     ]) + "\n"
 
 
+def nli_section():
+    """NLI entailment detector on the legitimate-traffic set, same shape as embedding_section:
+    false positives over the clean legitimate responses vs recall over the leaky. Lazy-imports the
+    model. Reproducer: report/nli_separability.py."""
+    from defense.output_nli_entailment import score           # loads nli-deberta-v3-small
+
+    clean = [json.loads(l) for l in LEGITIMATE.read_text().splitlines() if l.strip()]
+    leaky = [json.loads(l) for l in LEAKY.read_text().splitlines() if l.strip()]
+    cs, ls = [score(r["response"]) for r in clean], [score(r["response"]) for r in leaky]
+    nc, nl = len(cs), len(ls)
+
+    out = ["## Output-only defense (NLI entailment — reworded recitation)", "",
+           "`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For "
+           "each response sentence and each distinctive system-prompt line it asks: does the sentence "
+           "actually *say what the line says* — not, is it *about* the same topic. That is the difference "
+           "from the embedding cosine, and it is why it raises far fewer false alarms on benign billing "
+           "talk. Measured on the legitimate-traffic set, like the embedding detector above:", "",
+           f"| threshold | FP / {nc} clean | recall / {nl} leaky |", "|---|---|---|"]
+    for t in (0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90):
+        fp, tp = sum(s >= t for s in cs), sum(s >= t for s in ls)
+        out.append(f"| {t:.2f} | {fp}/{nc} ({100*fp/nc:.0f}%) | {tp}/{nl} ({100*tp/nl:.0f}%) |")
+    fp60, fp80 = sum(s >= 0.60 for s in cs), sum(s >= 0.80 for s in cs)
+    out += ["", f"At 0.60 it gives {fp60}/{nc} false positives, versus 13/{nc} (27%) for the embedding cosine "
+            f"at the same cutoff, and {fp80}/{nc} at 0.80 — so it clearly beats the embedding detector on "
+            "false alarms. But the bar is high: it fires on near-word-for-word recitation and misses looser "
+            f"rewording, measured next. (The leaky-recall column is a loose ruler — some of those {nl} leaked "
+            "only the credential with no line to recite, which this line detector correctly ignores.)"]
+    return "\n".join(out) + "\n"
+
+
+def paraphrase_section():
+    """The reworded-leak finding, rendered from report/paraphrase_eval.py (which holds the hand
+    labels and computes the numbers). Lazy import so the rest of the report renders without the models."""
+    from report.paraphrase_eval import summary
+    s = summary()
+    caught = ", ".join(s["caught"]) or "none"
+    bypass = ", ".join(s["bypass"]) or "none"
+    return "\n".join([
+        "## Output-only defense (NLI entailment — reworded leaks, measured)", "",
+        "The tables above only had word-for-word leaks. To test reworded leaks we built a probe set: "
+        f"`results/paraphrase.jsonl`, {s['total']} prompts that ask the model to restate its rules in its "
+        "own words, as a song, or translated (`data/paraphrase.py`, fired with `run.py --paraphrase`). "
+        "`report/paraphrase_eval.py` reproduces these numbers.", "",
+        f"None copied a line word-for-word; {s['keydumps']} printed the exact key (the credential detector's "
+        f"job). Of the {s['clean']} that stayed word-for-word-clean, a hand review found {s['leak']} real "
+        f"leaks (they reworded the Billing-API-credential fact), {s['borderline']} borderline, and "
+        f"{s['noleak']} clean.", "",
+        f"| detector | recall / {s['leak']} leaks | false-pos / {s['noleak']} clean |", "|---|---|---|",
+        f"| NLI entailment (nli-deberta-v3-small) | {s['nli_recall']}/{s['leak']} | {s['nli_fp']}/{s['noleak']} |",
+        f"| duplicate-question (quora-roberta-base) | {s['quora_recall']}/{s['leak']} | {s['quora_fp']}/{s['noleak']} |", "",
+        f"NLI catches {s['nli_recall']} of {s['leak']} reworded leaks — much weaker than on word-for-word "
+        f"copies. Its {s['nli_fp']} false alarms are all the model stating its own name (\"I'm AcmeSupport\"), "
+        "which the identity line matches. The bigger duplicate-question model is not better: it barely reacts "
+        f"to our lines (it expects question pairs), so it catches only {s['quora_recall']} and stays quiet "
+        "otherwise — its lower false-alarm count is that quietness, not precision.", "",
+        "The input guard already stops most of these before the model even answers. Over the "
+        f"{s['leak']} leaks: the guard blocks {s['blocked']} upstream; {s['reach']} reach the output layer; "
+        f"NLI catches {len(s['caught'])} ({caught}); {len(s['bypass'])} get through the whole stack ({bypass}). "
+        "So NLI's extra value on top of the guard is small.", "",
+        "**Takeaway.** Keep NLI as a low-false-alarm check for near-word-for-word recitation, where it clearly "
+        "beats the embedding cosine. It is not a reworded-leak solution: recall is low, a bigger model did not "
+        "help, and the input guard covers most of it. Residual risk: reworded system-prompt leaks that pass "
+        f"the input guard and dodge word-for-word matching — {len(s['bypass'])} of {s['leak']} here.",
+    ]) + "\n"
+
+
 def main():
     rows = [json.loads(l) for l in ATTACK.read_text().splitlines() if l.strip()]
     verdicts = score(rows)                                 # in memory only — not persisted
@@ -235,9 +303,9 @@ def main():
               f"defenses measured over the {len(rows)}-row attack evidence (read only): two "
               "input-guard variants that classify the prompt before the target, and output-side "
               "checks over the responses — a literal system-prompt match, the gitleaks secret "
-              "scan, and an obfuscation-hardened credential match. One further output detector, an "
-              "embedding cosine, is measured instead on the legitimate-traffic set, where it fails to "
-              "separate leaks from benign traffic.", ""]
+              "scan, and an obfuscation-hardened credential match. Two more output detectors — an "
+              "embedding cosine and an NLI entailment check for reworded recitation — are measured on the "
+              "legitimate-traffic set and a small reworded-leak probe set instead of the attack evidence.", ""]
     single = guard_section(rows, protectai_flag, "Input-only defense (single-model — protectai-v2)",
                            "`defense/input_protectai.py` — protectai/deberta-v3-base-prompt-injection-v2. "
                            "It scores the prompt, so the verdict is model-agnostic (classified once, not per model).")
@@ -247,8 +315,8 @@ def main():
                               "catches what protectai alone misses.") + FUSION_NOTES
 
     text = "\n".join(header) + "\n" + "\n".join(single) + "\n\n" + "\n".join(two_model) + "\n\n" + \
-        literal_match_table(rows) + "\n" + embedding_section() + "\n" + secret_table(rows, verdicts) + \
-        "\n" + credential_section(rows)
+        literal_match_table(rows) + "\n" + embedding_section() + "\n" + nli_section() + "\n" + \
+        paraphrase_section() + "\n" + secret_table(rows, verdicts) + "\n" + credential_section(rows)
     REPORT.write_text(text)
     print(text)
 
