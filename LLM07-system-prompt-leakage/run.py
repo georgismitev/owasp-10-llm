@@ -4,6 +4,7 @@ evidence to results/. Wiring only — no attack/judge logic of its own.
   python run.py                 fire the attack corpus at the dev model (qwen2.5:3b)
   python run.py --all           fire the attack corpus at the transfer set
   python run.py --legitimate    fire the legitimate corpus (add --all for the transfer set)
+  python run.py --paraphrase    fire the paraphrase corpus at the dev model
 
 The judge runs on every response either way — a legitimate prompt that elicits a leak
 is exactly what we want recorded. Append-only, one JSON object per run, keyed by
@@ -17,6 +18,7 @@ sys.path[:0] = [str(_impl.parents[0]), str(_impl)]        # repo root + lab dir
 from target.app import answer, SYSTEM_PROMPT
 from data.attack import ATTEMPTS
 from data.legitimate import LEGITIMATE
+from data.paraphrase import PARAPHRASE
 from eval.judge import system_leaked, secrets_leaked, leak_depth
 
 MODEL = "qwen2.5:3b"                                       # default: the dev model
@@ -24,8 +26,10 @@ MODELS_ALL = ["llama3.1:8b", "gemma3:12b", "glm4:9b", "mistral:7b", "qwen3.5:9b"
 BYPASS = os.environ.get("BYPASS_CACHE") == "1"
 ALL = "--all" in sys.argv
 RUN_LEGITIMATE = "--legitimate" in sys.argv               # run the legitimate corpus instead of the attack corpus
-CORPUS = LEGITIMATE if RUN_LEGITIMATE else ATTEMPTS
-RESULTS = _impl / "results" / ("legitimate.jsonl" if RUN_LEGITIMATE else "attack.jsonl")
+RUN_PARAPHRASE = "--paraphrase" in sys.argv               # run the paraphrase corpus (output-detector eval)
+CORPUS = PARAPHRASE if RUN_PARAPHRASE else LEGITIMATE if RUN_LEGITIMATE else ATTEMPTS
+RESULTS = _impl / "results" / ("paraphrase.jsonl" if RUN_PARAPHRASE
+                               else "legitimate.jsonl" if RUN_LEGITIMATE else "attack.jsonl")
 
 
 def fingerprint(model, prompt):
@@ -58,7 +62,7 @@ def main():
                 rec = {"id": a["id"], **label, "model": model,
                        "fingerprint": fp, "prompt": a["prompt"], "response": out,
                        "system_leaked": system_leaked(out), "secrets_leaked": secrets_leaked(out),
-                       "depth": leak_depth(out)}
+                       "leak_depth": leak_depth(out)}
                 f.write(json.dumps(rec) + "\n")
                 f.flush()
                 seen.add(fp)
