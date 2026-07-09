@@ -1,6 +1,6 @@
 # LLM07 — defense report
 
-defenses measured over the 300-row attack evidence (read only): two input-guard variants that classify the prompt before the target, and output-side checks over the responses — a literal system-prompt match, the gitleaks secret scan, and an obfuscation-hardened credential match. Two more output detectors — an embedding cosine and an NLI entailment check for reworded recitation — are measured on the legitimate-traffic set and a small reworded-leak probe set instead of the attack evidence.
+defenses measured over the 300-row attack evidence (read only): two input-guard variants that classify the prompt before the target, and output-side checks over the responses — a literal system-prompt match, the gitleaks secret scan, and an obfuscation-hardened credential match. Two more output detectors — an embedding cosine and an NLI entailment check for restated system-prompt lines — are measured on the legitimate-traffic set and a small reworded-leak probe set instead of the attack evidence.
 
 ## Input-only defense (single-model — protectai-v2)
 
