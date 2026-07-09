@@ -163,18 +163,20 @@ see exactly how the lab was built, in order.
   ~0 FP structural; only the separator stage is exercised so far.
 - Built an **NLI entailment output detector** (`defense/output_nli_entailment.py`): a
   cross-encoder (nli-deberta-v3-small) that asks whether a response *says what a distinctive
-  system-prompt line says*, not whether it is merely *about* the topic. On the legitimate-traffic
-  set it gives **3/49 (6%)** false positives at 0.60 vs the embedding cosine's **13/49 (27%)** —
-  the directional check beats the topicality confound. But the bar is high: it fires on
-  near-word-for-word recitation and misses looser rewording.
-- **Measured the reworded-leak arm with a new probe set** (`data/paraphrase.py` →
+  system-prompt line says*, not just whether it is *about* the same topic. On the
+  legitimate-traffic set that check gives **3/49 (6%)** false alarms at 0.60, against the
+  embedding cosine's **13/49 (27%)** — asking "does it say the line" beats measuring topic
+  overlap. Its limit: it only fires on near-word-for-word copying and misses looser rewording.
+- **Tested reworded leaks with a new probe set** (`data/paraphrase.py` →
   `results/paraphrase.jsonl`, 50 prompts asking the model to restate its rules in its own words /
   as a song / translated, via `run.py --paraphrase`). Hand-reviewed the 40 word-for-word-clean
-  responses: 14 real reworded leaks. NLI catches only **3/14** (its 4 false alarms are the model
-  stating its own name). A bigger duplicate-question model (quora-roberta-base) is **not better** —
-  it barely reacts to declarative lines (**1/14**). The input guard already blocks **9/14**
-  upstream, so NLI's marginal value is small; **4/14** reworded leaks bypass the whole stack — the
-  residual LLM07 risk. Conclusion: keep NLI as a low-false-alarm near-verbatim check, not a
-  reworded-leak solution.
+  responses: 14 are real leaks that reword the credential fact. NLI catches only **3/14** (its 4
+  false alarms are the model stating its own name). A bigger duplicate-question model
+  (quora-roberta-base) is **not better** — it barely reacts to declarative lines (**1/14**). The
+  input guard already blocks **9/14** before the model answers; of the rest NLI catches 1, and
+  **4/14** get through the whole stack — the residual LLM07 risk. Verdict: NLI is not worth
+  shipping to close reworded leaks — word-for-word copies are already caught by the deterministic
+  literal match, and rewording it mostly misses. A cheap low-noise extra at best, not a control to
+  rely on.
 - Pulled two cross-encoders (no git trace): `cross-encoder/nli-deberta-v3-small` (44M) and
-  `cross-encoder/quora-roberta-base` (125M).
+  `cross-encoder/quora-roberta-base` (125M); their role and call sites are in `docs/USED_MODELS.md`.

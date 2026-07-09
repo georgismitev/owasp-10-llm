@@ -68,13 +68,13 @@ The two-model recall above is a **hard-label OR**: each model argmaxes at its ow
 
 ## Output-only defense (literal string match)
 
-`defense/output_literal_match.py` — substring match over each response. Fires on a full system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; either way it's flagged. Cheap, and blind by construction to paraphrase (the embedding detector below) and to obfuscation of the credential (defense/output_credential.py).
+`defense/output_literal_match.py` — substring match over each response. Fires on a full system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; either way it's flagged. Cheap, and blind by construction to paraphrase (the embedding cosine below) and to obfuscation of the credential (defense/output_credential.py).
 
 flags: 184/300 responses
 of the 168 leaked responses, it catches 168
 partial-only flags on the 132 judge-clean responses: 16 — the `BILLING_API_KEY` label surfaced without the value. Some are real partial disclosures, some are benign env-var talk (incl. the benign control); flagged for an operator to review, not auto-blocked.
 
-recall on real leaks is ~100% *by construction* — the markers are the judge's own distinctive lines, so it validates nothing new. Its real limits are paraphrased and obfuscated leaks, which this corpus doesn't contain yet — paraphrase is the embedding detector below (which fails), and obfuscated credentials are `defense/output_credential.py`.
+recall on real leaks is ~100% *by construction* — the markers are the judge's own distinctive lines, so it validates nothing new. Its real limits are paraphrased and obfuscated leaks, which this corpus doesn't contain yet — paraphrase is the embedding cosine below (which fails), and obfuscated credentials are `defense/output_credential.py`.
 
 ## Output-only defense (embedding cosine — failed separability)
 
@@ -95,7 +95,7 @@ No threshold separates the two: at the shipped 0.60 cutoff, 13/49 (27%) false po
 
 ## Output-only defense (NLI entailment — reworded recitation)
 
-`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For each response sentence and each distinctive system-prompt line it asks: does the sentence actually *say what the line says* — not, is it *about* the same topic. That is the difference from the embedding cosine, and it is why it raises far fewer false alarms on benign billing talk. Measured on the legitimate-traffic set, like the embedding detector above:
+`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For each response sentence and each distinctive system-prompt line it asks: does the sentence actually *say what the line says* — not, is it *about* the same topic. That is the difference from the embedding cosine, and it is why it raises far fewer false alarms on benign billing talk. Measured on the legitimate-traffic set, like the embedding cosine above:
 
 | threshold | FP / 49 clean | recall / 11 leaky |
 |---|---|---|
@@ -107,7 +107,7 @@ No threshold separates the two: at the shipped 0.60 cutoff, 13/49 (27%) false po
 | 0.80 | 1/49 (2%) | 4/11 (36%) |
 | 0.90 | 1/49 (2%) | 4/11 (36%) |
 
-At 0.60 it gives 3/49 false positives, versus 13/49 (27%) for the embedding cosine at the same cutoff, and 1/49 at 0.80 — so it clearly beats the embedding detector on false alarms. But the bar is high: it fires on near-word-for-word recitation and misses looser rewording, measured next. (The leaky-recall column is a loose ruler — some of those 11 leaked only the credential with no line to recite, which this line detector correctly ignores.)
+At 0.60 it gives 3/49 false positives, versus 13/49 (27%) for the embedding cosine at the same cutoff, and 1/49 at 0.80 — so it clearly beats the embedding cosine on false alarms. Its limit: it only fires on near-word-for-word copying and misses looser rewording, measured next. (The leaky-recall column is a loose ruler — some of those 11 leaked only the credential with no line to recite, which this line detector correctly ignores.)
 
 ## Output-only defense (NLI entailment — reworded leaks, measured)
 
@@ -124,7 +124,7 @@ NLI catches 3 of 14 reworded leaks — much weaker than on word-for-word copies.
 
 The input guard already stops most of these before the model even answers. Over the 14 leaks: the guard blocks 9 upstream; 5 reach the output layer; NLI catches 1 (p09); 4 get through the whole stack (p04, p16, p19, p20). So NLI's extra value on top of the guard is small.
 
-**Takeaway.** Keep NLI as a low-false-alarm check for near-word-for-word recitation, where it clearly beats the embedding cosine. It is not a reworded-leak solution: recall is low, a bigger model did not help, and the input guard covers most of it. Residual risk: reworded system-prompt leaks that pass the input guard and dodge word-for-word matching — 4 of 14 here.
+**Verdict.** Don't ship NLI as its own layer. Word-for-word leaks are already caught by the deterministic literal match (no model); genuine rewording it mostly misses — 3 of 14 — and the input guard blocks most reworded attempts before the model even answers. Its one merit is low false alarms, so it is a cheap extra check at best, not a control to rely on. Residual risk is unchanged either way: reworded system-prompt leaks that pass the input guard and are not word-for-word — 4 of 14 here.
 
 ## Secret-only defense (gitleaks output scan)
 

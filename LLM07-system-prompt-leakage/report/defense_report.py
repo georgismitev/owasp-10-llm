@@ -103,7 +103,7 @@ def literal_match_table(rows):
            "`defense/output_literal_match.py` — substring match over each response. Fires on a full "
            "system-prompt line or the credential value, and on the partial `BILLING_API_KEY` label; "
            "either way it's flagged. Cheap, and blind by construction to paraphrase (the embedding "
-           "detector below) and to obfuscation of the credential (defense/output_credential.py).", "",
+           "cosine below) and to obfuscation of the credential (defense/output_credential.py).", "",
            f"flags: {len(flagged)}/{n} responses",
            f"of the {len(leaked)} leaked responses, it catches {caught}",
            f"partial-only flags on the {len(clean)} judge-clean responses: {len(partial)} — the "
@@ -113,7 +113,7 @@ def literal_match_table(rows):
            "recall on real leaks is ~100% *by construction* — the markers are the judge's own "
            "distinctive lines, so it validates nothing new. Its real limits are paraphrased and "
            "obfuscated leaks, which this corpus doesn't contain yet — paraphrase is the embedding "
-           "detector below (which fails), and obfuscated credentials are `defense/output_credential.py`."]
+           "cosine below (which fails), and obfuscated credentials are `defense/output_credential.py`."]
     return "\n".join(out) + "\n"
 
 
@@ -245,15 +245,15 @@ def nli_section():
            "each response sentence and each distinctive system-prompt line it asks: does the sentence "
            "actually *say what the line says* — not, is it *about* the same topic. That is the difference "
            "from the embedding cosine, and it is why it raises far fewer false alarms on benign billing "
-           "talk. Measured on the legitimate-traffic set, like the embedding detector above:", "",
+           "talk. Measured on the legitimate-traffic set, like the embedding cosine above:", "",
            f"| threshold | FP / {nc} clean | recall / {nl} leaky |", "|---|---|---|"]
     for t in (0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90):
         fp, tp = sum(s >= t for s in cs), sum(s >= t for s in ls)
         out.append(f"| {t:.2f} | {fp}/{nc} ({100*fp/nc:.0f}%) | {tp}/{nl} ({100*tp/nl:.0f}%) |")
     fp60, fp80 = sum(s >= 0.60 for s in cs), sum(s >= 0.80 for s in cs)
     out += ["", f"At 0.60 it gives {fp60}/{nc} false positives, versus 13/{nc} (27%) for the embedding cosine "
-            f"at the same cutoff, and {fp80}/{nc} at 0.80 — so it clearly beats the embedding detector on "
-            "false alarms. But the bar is high: it fires on near-word-for-word recitation and misses looser "
+            f"at the same cutoff, and {fp80}/{nc} at 0.80 — so it clearly beats the embedding cosine on "
+            "false alarms. Its limit: it only fires on near-word-for-word copying and misses looser "
             f"rewording, measured next. (The leaky-recall column is a loose ruler — some of those {nl} leaked "
             "only the credential with no line to recite, which this line detector correctly ignores.)"]
     return "\n".join(out) + "\n"
@@ -288,10 +288,12 @@ def paraphrase_section():
         f"{s['leak']} leaks: the guard blocks {s['blocked']} upstream; {s['reach']} reach the output layer; "
         f"NLI catches {len(s['caught'])} ({caught}); {len(s['bypass'])} get through the whole stack ({bypass}). "
         "So NLI's extra value on top of the guard is small.", "",
-        "**Takeaway.** Keep NLI as a low-false-alarm check for near-word-for-word recitation, where it clearly "
-        "beats the embedding cosine. It is not a reworded-leak solution: recall is low, a bigger model did not "
-        "help, and the input guard covers most of it. Residual risk: reworded system-prompt leaks that pass "
-        f"the input guard and dodge word-for-word matching — {len(s['bypass'])} of {s['leak']} here.",
+        "**Verdict.** Don't ship NLI as its own layer. Word-for-word leaks are already caught by the "
+        "deterministic literal match (no model); genuine rewording it mostly misses — "
+        f"{s['nli_recall']} of {s['leak']} — and the input guard blocks most reworded attempts before the "
+        "model even answers. Its one merit is low false alarms, so it is a cheap extra check at best, not a "
+        "control to rely on. Residual risk is unchanged either way: reworded system-prompt leaks that pass "
+        f"the input guard and are not word-for-word — {len(s['bypass'])} of {s['leak']} here.",
     ]) + "\n"
 
 
