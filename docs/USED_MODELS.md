@@ -44,3 +44,29 @@ All labs run across these. Digests filled once pulled.
 
 All five verified serving over `/v1` (deterministic `pong` reply, `temperature=0`, `seed=0`);
 `qwen3.5:9b` is additionally routed via native `/api/chat` to disable reasoning under a token cap.
+
+## Per-attack inventory
+
+Every model and secret-scanning tool a lab actually exercises, and the role each
+serves. Inventory only — roles, not findings; efficacy lives in each lab's reports.
+Identifiers are the exact tags / Hugging Face ids used in the code.
+
+### LLM07 — System Prompt Leakage
+
+Target models are the serving pins above (cross-referenced, not repeated). The
+detectors below are auxiliary models/tools loaded locally by the defenses; the input
+guards score the user prompt, so they are model-agnostic and make no target-model call.
+
+| Identifier | Role in the lab | Where used |
+|---|---|---|
+| `qwen2.5:3b` | target — dev / fast-iteration model (see *Dev model* above) | `target/app.py` |
+| `llama3.1:8b`, `gemma3:12b`, `glm4:9b`, `mistral:7b`, `qwen3.5:9b` | target — transfer set, tests whether the leak transfers (see *Transfer set* above) | `target/app.py` |
+| `protectai/deberta-v3-base-prompt-injection-v2` | input guard — prompt-injection classifier | `defense/input_protectai.py`, composed in `defense/input_two_model.py`, compared in `report/input_guard_comparison.py` |
+| `patronus-studio/wolf-defender-prompt-injection-small` | input guard — prompt-injection classifier | `defense/input_wolf.py`, composed in `defense/input_two_model.py`, compared in `report/input_guard_comparison.py` |
+| `leolee99/PIGuard` | input guard — prompt-injection classifier | `defense/input_piguard.py`, compared in `report/input_guard_comparison.py` |
+| `sentence-transformers/all-MiniLM-L6-v2` | output detector — paraphrase/similarity embedding of the response against the system prompt | `defense/output_embedding.py`, `report/embedding_separability.py` |
+| `gitleaks` (CLI tool, **not a model**) | output detector — secret scanner over the response | `defense/output_secret_scan.py` |
+
+The remaining output-side detectors are deterministic and use **no model**:
+`defense/output_credential.py` (normalize + decode-ladder exact match against the known
+key) and `defense/output_literal_match.py` (verbatim substring match).
