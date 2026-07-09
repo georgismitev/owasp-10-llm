@@ -46,9 +46,9 @@ The build order:
 
 ## Layout
 
-- [`docs/setup.md`](docs/setup.md) — the shared machinery: serving, `labkit/`, the
+- [`docs/SETUP.md`](docs/SETUP.md) — the shared machinery: serving, `labkit/`, the
   per-lab layout, and how success is measured.
-- [`docs/handover.md`](docs/handover.md) — run-to-run state.
+- [`docs/HANDOVER.md`](docs/HANDOVER.md) — run-to-run state.
 - [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — step-by-step log of everything we do,
   including actions with no git trace (installing Ollama, pulling models).
 - [`CLAUDE.md`](CLAUDE.md) — rules of engagement.

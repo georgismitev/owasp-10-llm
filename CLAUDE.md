@@ -1,7 +1,7 @@
 # Rules of engagement
 
-This is a hands-on learning lab (`README.md` = the aims, `docs/setup.md` = the
-machinery, `docs/handover.md` = current state). **I lead, you follow.**
+This is a hands-on learning lab (`README.md` = the aims, `docs/SETUP.md` = the
+machinery, `docs/HANDOVER.md` = current state). **I lead, you follow.**
 Read these rules before every change.
 
 ## 1. You follow — you do not lead
