@@ -93,9 +93,13 @@ recall on real leaks is ~100% *by construction* — the markers are the judge's 
 
 No threshold separates the two: at the shipped 0.60 cutoff, 13/49 (27%) false positives for 9/11 recall, and pushing FP down only sheds recall. **Why:** whole-prompt cosine scores whether the response is *about* the billing topic, not whether it *recites* the prompt — every legitimate billing answer sits close to the billing system prompt by construction. That is the topicality confound. The next direction to explore is to score the distinctive lines themselves (per-line lexical / entailment), not the whole prompt.
 
-## Output-only defense (NLI entailment — reworded recitation)
+## Output-only defense (NLI entailment)
 
-`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For each response sentence and each distinctive system-prompt line it asks: does the sentence actually *say what the line says* — not, is it *about* the same topic. That is the difference from the embedding cosine, and it is why it raises far fewer false alarms on benign billing talk. Measured on the legitimate-traffic set, like the embedding cosine above:
+`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For each response sentence and each distinctive system-prompt line it asks: does the sentence actually *say what the line says* — not, is it *about* the same topic. That is the difference from the embedding cosine, and it is why it raises far fewer false alarms on benign billing talk. One model, one detector, measured on two sets below.
+
+### On the legitimate-traffic set
+
+Measured like the embedding cosine above — false positives on the clean responses, recall on the leaky ones:
 
 | threshold | FP / 49 clean | recall / 11 leaky |
 |---|---|---|
@@ -109,7 +113,7 @@ No threshold separates the two: at the shipped 0.60 cutoff, 13/49 (27%) false po
 
 At 0.60 it gives 3/49 false positives, versus 13/49 (27%) for the embedding cosine at the same cutoff, and 1/49 at 0.80 — so it clearly beats the embedding cosine on false alarms. Its limit: it only fires on near-word-for-word copying and misses looser rewording, measured next. (The leaky-recall column is a loose ruler — some of those 11 leaked only the credential with no line to recite, which this line detector correctly ignores.)
 
-## Output-only defense (NLI entailment — reworded leaks, measured)
+### On the reworded-leak probe set
 
 The tables above only had word-for-word leaks. To test reworded leaks we built a probe set: `results/paraphrase.jsonl`, 50 prompts that ask the model to restate its rules in its own words, as a song, or translated (`data/paraphrase.py`, fired with `run.py --paraphrase`). `report/paraphrase_eval.py` reproduces these numbers.
 

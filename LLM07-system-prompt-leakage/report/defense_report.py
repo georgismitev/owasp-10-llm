@@ -240,12 +240,15 @@ def nli_section():
     cs, ls = [score(r["response"]) for r in clean], [score(r["response"]) for r in leaky]
     nc, nl = len(cs), len(ls)
 
-    out = ["## Output-only defense (NLI entailment — reworded recitation)", "",
+    out = ["## Output-only defense (NLI entailment)", "",
            "`defense/output_nli_entailment.py` — a cross-encoder NLI model (nli-deberta-v3-small). For "
            "each response sentence and each distinctive system-prompt line it asks: does the sentence "
            "actually *say what the line says* — not, is it *about* the same topic. That is the difference "
            "from the embedding cosine, and it is why it raises far fewer false alarms on benign billing "
-           "talk. Measured on the legitimate-traffic set, like the embedding cosine above:", "",
+           "talk. One model, one detector, measured on two sets below.", "",
+           "### On the legitimate-traffic set", "",
+           "Measured like the embedding cosine above — false positives on the clean responses, recall "
+           "on the leaky ones:", "",
            f"| threshold | FP / {nc} clean | recall / {nl} leaky |", "|---|---|---|"]
     for t in (0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90):
         fp, tp = sum(s >= t for s in cs), sum(s >= t for s in ls)
@@ -267,7 +270,7 @@ def paraphrase_section():
     caught = ", ".join(s["caught"]) or "none"
     bypass = ", ".join(s["bypass"]) or "none"
     return "\n".join([
-        "## Output-only defense (NLI entailment — reworded leaks, measured)", "",
+        "### On the reworded-leak probe set", "",
         "The tables above only had word-for-word leaks. To test reworded leaks we built a probe set: "
         f"`results/paraphrase.jsonl`, {s['total']} prompts that ask the model to restate its rules in its "
         "own words, as a song, or translated (`data/paraphrase.py`, fired with `run.py --paraphrase`). "
