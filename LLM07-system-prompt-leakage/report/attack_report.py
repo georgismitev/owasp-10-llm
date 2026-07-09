@@ -39,7 +39,7 @@ def depth_table(rows, models):
         if m not in dep:
             continue
         n[m] += 1
-        dep[m][r["depth"]] += 1
+        dep[m][r["leak_depth"]] += 1
         sec[m] += bool(r["secrets_leaked"])
     lines = ["### leak depth by model", "",
              "system-prompt recital by verbatim marker count "

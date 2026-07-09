@@ -65,6 +65,8 @@ guards score the user prompt, so they are model-agnostic and make no target-mode
 | `patronus-studio/wolf-defender-prompt-injection-small` | input guard — prompt-injection classifier | `defense/input_wolf.py`, composed in `defense/input_two_model.py`, compared in `report/input_guard_comparison.py` |
 | `leolee99/PIGuard` | input guard — prompt-injection classifier | `defense/input_piguard.py`, compared in `report/input_guard_comparison.py` |
 | `sentence-transformers/all-MiniLM-L6-v2` | output detector — paraphrase/similarity embedding of the response against the system prompt | `defense/output_embedding.py`, `report/embedding_separability.py` |
+| `cross-encoder/nli-deberta-v3-small` (44M) | output detector — NLI entailment; flags a response that restates a distinctive system-prompt line | `defense/output_nli_entailment.py`, `report/nli_separability.py`, `report/paraphrase_eval.py` |
+| `cross-encoder/quora-roberta-base` (125M) | output detector — duplicate-question model trialed as an alternative to NLI; inert on our declarative lines | `report/paraphrase_eval.py` |
 | `gitleaks` (CLI tool, **not a model**) | output detector — secret scanner over the response | `defense/output_secret_scan.py` |
 
 The remaining output-side detectors are deterministic and use **no model**:
