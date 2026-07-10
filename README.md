@@ -5,16 +5,13 @@ ship a defense for each, and **measure the before/after** — so the defense is 
 not asserted. For each attack a reader can: **clone → run the attack → see the effect →
 enable the defense → re-run → see the residual risk**, with real numbers at each step.
 
-> A learning project. Tooling and agents build the platform and scaffolding only —
-> never the exploits or the mitigations.
-
 ## The attack plan
 
 The build order:
 
 | # | ID | Title |
 |---|----|-------|
-| 1 | LLM07 | System Prompt Leakage |
+| 1 | LLM07 | [System Prompt Leakage](LLM07-system-prompt-leakage/) |
 | 2 | LLM01 | Prompt Injection |
 | 3 | LLM05 | Improper Output Handling |
 | 4 | LLM06 | Excessive Agency |
@@ -48,12 +45,15 @@ The build order:
 
 - [`docs/SETUP.md`](docs/SETUP.md) — the shared machinery: serving, `labkit/`, the
   per-lab layout, and how success is measured.
-- [`docs/HANDOVER.md`](docs/HANDOVER.md) — run-to-run state.
-- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — step-by-step log of everything we do,
-  including actions with no git trace (installing Ollama, pulling models).
-- [`CLAUDE.md`](CLAUDE.md) — rules of engagement.
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — step-by-step build log, including actions
+  with no git trace (installing Ollama, pulling models).
 - [`labkit/`](labkit/) — the shared platform (OpenAI-compatible model client + on-disk
   cache); platform only, **no attack / defense / eval logic**.
 - `LLM<NN>-<slug>/` — one folder per lab (e.g.
   [`LLM07-system-prompt-leakage/`](LLM07-system-prompt-leakage/)).
 - `pyproject.toml` / `uv.lock` — Python packaging via [`uv`](https://docs.astral.sh/uv/).
+
+## License
+
+Code is [MIT](LICENSE). Threat-model prose paraphrased from the *OWASP Top 10 for LLM
+Applications 2025* is used under CC BY-SA 4.0.
