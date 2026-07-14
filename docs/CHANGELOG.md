@@ -11,16 +11,16 @@ see exactly how the lab was built, in order.
   "log every step" rule in `CLAUDE.md`.
 - Removed the duplicated `## Git` section from project `CLAUDE.md` (already in
   global `~/.claude/CLAUDE.md`).
-- **A (serving substrate):** Installed Ollama 0.31.1 (CPU-only, systemd service on
+- **Serving:** Installed Ollama 0.31.1 (CPU-only, systemd service on
   `127.0.0.1:11434`), pulled dev model `qwen2.5:3b` (Q4_K_M), verified deterministic
   `pong` over native `/api/generate` and OpenAI-compatible `/v1` (`temp=0`, `seed=0`,
   `num_thread=4`).
 - Pulled the 5-model transfer set (`llama3.1:8b`, `gemma3:12b`, `qwen3:8b`, `glm4:9b`,
   `mistral:7b`; ~28 GB), verified each serves over `/v1`.
-- Wrote `USED_MODELS.md` pin sheet: backend version, threads, determinism defaults,
-  and per-model tag + sha256 digest + quant (note: `glm4:9b` is Q4_0, others Q4_K_M).
-  Later moved it to `docs/USED_MODELS.md`.
-- **B (Python project):** `uv init --bare` (uv 0.11.13), pinned Python 3.12
+- Wrote `USED_MODELS.md` with the pinned model versions: backend version, threads,
+  determinism defaults, and per-model tag + sha256 digest + quant (note: `glm4:9b` is
+  Q4_0, others Q4_K_M). Later moved it to `docs/USED_MODELS.md`.
+- **Python project:** `uv init --bare` (uv 0.11.13), pinned Python 3.12
   (`.python-version` → 3.12.13), added `openai` 2.44.0 as the one `/v1` client dep,
   locked deps in `uv.lock`. Verified the SDK reaches `qwen2.5:3b` over `/v1`
   (deterministic `pong`). Added `.gitignore` for `.venv/` and caches.
@@ -70,7 +70,7 @@ see exactly how the lab was built, in order.
 - Added **`eval/report.py`** — transfer report: technique×model matrices (system + secret)
   + callouts (universal / doesn't-transfer / dead / most-resistant), markdown to
   `results/report.md`.
-- Ran the transfer sweep (50 × 5 transfer models) on CPU via Ollama → appends to
+- Ran the transfer set (50 × 5 transfer models) on CPU via Ollama → appends to
   `attack.jsonl` (300 rows total incl. the 50 dev-model runs).
 - Capped attack generations at `max_tokens=256` (all observed leaks surface within
   ~135 tokens; bounds runaway generations, esp. reasoning models). Dropped the
@@ -93,13 +93,13 @@ see exactly how the lab was built, in order.
 - Reframed impl-01 `README.md` (PR #5): system-prompt leakage is the LLM07 event, the
   planted credential the sharp high-severity sub-case; eval/defense split into two tiers
   + input/output filters.
-- Launched the capped 5-model transfer sweep (`--all`, `max_tokens=256`) as a detached,
+- Launched the capped 5-model transfer run (`--all`, `max_tokens=256`) as a detached,
   auto-resuming background run → `results/attack.jsonl`.
 - Compared two secret scanners for the output-side defense: installed `gitleaks` 8.30.1 +
   `trufflehog` 3.95.8 (`~/bin`). gitleaks flags the `BILLING_API_KEY=sk-ac-live-…`
   assignment (`generic-api-key`, entropy 4.25) but misses the bare key in prose;
   trufflehog detects neither. Chose **gitleaks**.
-- Completed the capped transfer sweep — 300 rows (5 transfer models × 50 + the
+- Completed the capped transfer run — 300 rows (5 transfer models × 50 + the
   `qwen2.5:3b` baseline), cap-consistent with the uncapped baseline (16/50 system,
   22/50 secret).
 - Extended the leak judge: added `You are AcmeSupport` to `SYSTEM_MARKERS` (4) + a
@@ -143,9 +143,9 @@ see exactly how the lab was built, in order.
   from benign on-topic traffic. Swept over the legitimate-traffic set (49 clean vs 11 leaky):
   at the 0.60 cutoff 13/49 (27%) false positives for 9/11 (82%) recall, and pushing the
   false-positive rate down only sheds recall. Cause: whole-prompt cosine measures billing-topic
-  overlap, not recitation — the topicality confound. Recorded the scorer as a documented
-  dead-end with a reproducible sweep harness (`report/embedding_separability.py`) and folded
-  the result into the defense report.
+  overlap, not recitation — it fires on anything about billing, leak or not. Recorded the scorer
+  as a documented dead-end with a reproducible threshold sweep (`report/embedding_separability.py`)
+  and folded the result into the defense report.
 - Built an **obfuscation-hardened credential output detector** (`defense/output_credential.py`):
   normalizes separators / unicode and tries reverse / rot13 / base64 / hex before an exact
   match against the known key — deterministic, ~0 false positives. Only the separator stage is
