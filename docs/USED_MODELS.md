@@ -1,7 +1,7 @@
-# USED MODELS — serving substrate & pin sheet
+# Models — how they're served and pinned
 
-Reproducibility facts for the serving layer. No lab content here — this is pure
-platform. Every eval run pins to the rows below so results are reproducible.
+How the models are served, and the exact versions each run is pinned to so results
+reproduce. No attack or defense content here — just the platform.
 
 ## Serving
 
@@ -15,11 +15,10 @@ platform. Every eval run pins to the rows below so results are reproducible.
 | Inference threads | 4 (= physical cores) |
 | Determinism defaults | `temperature=0`, `seed=0` |
 
-Determinism verified: same prompt over `/v1` twice → identical output.
+## Used open-source AI models
 
-## Pinned models
-
-Tags can move upstream; the **sha256 digest** is the real pin.
+A tag like `qwen2.5:3b` can be repointed to new weights upstream, so each model is
+pinned by its **sha256 digest** — that's what actually fixes the version.
 
 ### Dev model (fast iteration loop)
 
@@ -30,9 +29,9 @@ Tags can move upstream; the **sha256 digest** is the real pin.
 | Quant | Q4_K_M |
 | Size | 1.9 GB |
 
-### Transfer set (the 5 — one per maker)
+### Transfer set — five models, one per maker
 
-All labs run across these. Digests filled once pulled.
+Every lab runs the attack across all five to see whether it transfers.
 
 | Tag | Maker | Quant | Digest | Notes |
 |-----|-------|-------|--------|-------|
@@ -42,20 +41,20 @@ All labs run across these. Digests filled once pulled.
 | `glm4:9b` | Zhipu | **Q4_0** | `sha256:5b699761eca535dc55047ad9d2dbf54e3b8697709419ef78a70503ed4bfbcf44` | GLM-4-9B-chat (only Q4_0 published on Ollama, not Q4_K_M) |
 | `mistral:7b` | Mistral | Q4_K_M | `sha256:6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf` | Mistral-7B-Instruct-v0.3 |
 
-All five verified serving over `/v1` (deterministic `pong` reply, `temperature=0`, `seed=0`);
-`qwen3.5:9b` is additionally routed via native `/api/chat` to disable reasoning under a token cap.
+All five serve over `/v1`. `qwen3.5:9b` is routed through the native `/api/chat` path to
+turn off reasoning under a token cap, because `/v1` ignores the `think` setting.
 
-## Per-attack inventory
+## What each lab uses
 
-Every model and secret-scanning tool a lab actually exercises, and the role each
-serves. Inventory only — roles, not findings; efficacy lives in each lab's reports.
-Identifiers are the exact tags / Hugging Face ids used in the code.
+Every model and tool a lab actually runs, and what it does. Roles only — how well each
+one works lives in the lab's own reports. Names are the exact Ollama tags / Hugging Face
+ids from the code.
 
 ### LLM07 — System Prompt Leakage
 
-Target models are the serving pins above (cross-referenced, not repeated). The
-detectors below are auxiliary models/tools loaded locally by the defenses; the input
-guards score the user prompt, so they are model-agnostic and make no target-model call.
+The target models are the ones listed above. The detectors below are extra models and
+tools the defenses load locally. The input guards score the user's prompt, so they behave
+the same whatever the target model is and never call it.
 
 | Identifier | Role in the lab | Where used |
 |---|---|---|
